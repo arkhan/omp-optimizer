@@ -41,6 +41,8 @@
 // Ceiling: si aun así molesta, la opción más simple es no auto-inyectar y
 // dejar que el usuario pida `mem_context` cuando lo necesite.
 
+import { loadOptValue, saveOptValue } from "./persist.ts";
+
 const MAX_OBSERVATIONS = 5;
 const MAX_CHARS = 2000;
 const PRIVATE_TAG_PATTERN = /<private>[\s\S]*?<\/private>/gi;
@@ -131,12 +133,26 @@ async function injectMemoryContext(pi, ctx, project, status) {
 export default function (pi, status) {
   pi.setLabel("Engram Recall");
 
+  // on/off toggle, mirrors caveman/rtk/toon/ponytail: persisted in
+  // optimizer.json, default "on". Off skips the HTTP round trip entirely
+  // (not just the injection) — a user who disabled it doesn't want the
+  // request either.
+  let enabled = (loadOptValue("engram") ?? "on") !== "off";
+
   pi.on("session_start", async (_event, ctx) => {
+    if (!enabled) {
+      if (ctx.hasUI) status?.set("engram", false, ctx);
+      return;
+    }
     const project = await resolveProject(ctx.cwd);
     await injectMemoryContext(pi, ctx, project, status);
   });
 
   pi.on("session_compact", async (event, ctx) => {
+    if (!enabled) {
+      if (ctx.hasUI) status?.set("engram", false, ctx);
+      return;
+    }
     const project = await resolveProject(ctx.cwd);
     const summary = event?.compactionEntry?.summary?.trim();
     const sessionId = ctx.sessionManager?.getSessionId();
@@ -156,4 +172,24 @@ export default function (pi, status) {
     // igual que en session_start.
     await injectMemoryContext(pi, ctx, project, status);
   });
+
+  return {
+    name: "engram",
+    help: "engram — auto memory recall on session_start/compact (:7437)",
+    values: ["off", "on"],
+    current: () => (enabled ? "on" : "off"),
+    run: async (value, ctx) => {
+      enabled = value === "on";
+      saveOptValue("engram", enabled ? "on" : "off");
+      if (!enabled) {
+        status?.set("engram", false, ctx);
+        ctx.ui.notify("Engram recall off.", "info");
+        return;
+      }
+      // Enabling mid-session: recall immediately instead of waiting for the
+      // next session_start/compact.
+      const project = await resolveProject(ctx.cwd);
+      await injectMemoryContext(pi, ctx, project, status);
+    },
+  };
 }

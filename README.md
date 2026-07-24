@@ -2,24 +2,25 @@
 
 Token-optimization suite for [oh-my-pi](https://github.com/oh-my-pi) — a local
 port of [`@xynogen/pix-optimizer`](https://github.com/xynogen/pix-mono/tree/main/packages/pix-optimizer)
-off the upstream `pi.dev` coding agent. Four optimizer tools wired into one
-extension via `src/index.ts`, fronted by a single `/optimizer` command and one
-shared status-bar cell:
+off the upstream `pi.dev` coding agent. Six tools wired into one extension via
+`src/index.ts`, fronted by a single `/optimizer` command and one shared
+status-bar cell:
 
 - **Caveman** (`Cv`) — terse-output system prompt
 - **RTK** (`Rk`) — prefixes shell commands with `rtk` + injects RTK prompt
 - **TOON** (`Tn`) — jq + TOON guidance for dense JSON (bundled `toon-json` skill)
 - **Ponytail** (`Pt`) — lazy-senior-dev system prompt (minimal code, YAGNI)
+- **Engram** (`En`) — automatic memory recall on `session_start` and retain on
+  compaction, via the local Engram HTTP server (`:7437`); on/off toggle
+- **Title** (`Tt`) — background session titles from the first user prompts;
+  on/off toggle
 
-Since v2.0.0 this package also absorbs three formerly standalone plugins:
+All six persist to `~/.omp/agent/optimizer.json` and toggle through the same
+`/optimizer` command. Since v2.0.0 this package also absorbs a third
+formerly standalone plugin:
 
 - **omp-skills** — 39 workflow skills under `skills/` (auto-discovered by omp's
   skill provider) + live `` !`cmd` `` directive interpolation on `skill://` reads
-- **omp-engram** — automatic Engram memory recall on `session_start` and retain
-  on compaction, via the local HTTP server (`:7437`)
-- **omp-title** — background session titles from the first user prompts,
-  imported as the prebuilt self-contained `src/title.bundle.js` (omp's
-  extension loader can't resolve pi-ai's transitive `typebox` dep from raw TS)
 
 ## Command
 
@@ -27,7 +28,7 @@ One command opens an interactive overlay that fronts every tool:
 
 ```text
 /optimizer                 → pick a tool, then pick its value (native select dialogs)
-/optimizer status          → plain-text summary of all four tools
+/optimizer status          → plain-text summary of all six tools
 /optimizer <tool>          → current value + valid values for that tool
 /optimizer <tool> <value>  → set directly (headless-safe)
 ```
@@ -39,17 +40,19 @@ enable/disable toggles only), so the interactive path uses omp's native
 `ctx.ui.select` dialogs. Every path ends in the tool's `run()` handler, which
 persists the new value and repaints the shared status cell.
 
-State persists to `~/.omp/agent/optimizer.json` (caveman/rtk/toon/ponytail),
-keyed by tool name. Each tool reads its saved value on `session_start` and
-writes it on every `/optimizer` change.
+State persists to `~/.omp/agent/optimizer.json`, keyed by tool name. Each tool
+reads its saved value on `session_start` and writes it on every `/optimizer`
+change.
 
 ## Status bar
 
-A single cell always shows all four tool icons in a fixed left-to-right order,
+A single cell always shows all six tool icons in a fixed left-to-right order,
 color-coded by state: **accent** when the tool is enabled, **dim** when
-disabled. The cell is never empty.
+disabled. The cell is never empty. Engram's icon is accent only when BOTH
+enabled and memory was actually loaded this session (dim if disabled or the
+Engram server is unreachable).
 
-Icons are static ASCII glyphs (`Cv`, `Rk`, `Tn`, `Pt`, `En`) — the upstream
+Icons are static ASCII glyphs (`Cv`, `Rk`, `Tn`, `Pt`, `En`, `Tt`) — the upstream
 `pix-pretty` nerd-font/unicode icon catalog was dropped in this port (it was an
 external dependency not available to omp extensions). No configuration knob;
 if a themed icon set matters, extend `TOOL_ICON_ASCII` in `src/status.ts`.
@@ -156,19 +159,21 @@ skill registration needed.
 
 | File              | Role                                                      |
 |-------------------|-----------------------------------------------------------|
-| `src/index.ts`    | Wires the four tools + shared status, registers `/optimizer` |
-| `src/opt.ts`      | The `/optimizer` overlay UI (keyboard nav + cycling)     |
+| `src/index.ts`    | Wires all six tools + shared status, registers `/optimizer` |
+| `src/opt.ts`      | The `/optimizer` command (native select dialogs + text args) |
 | `src/status.ts`   | Shared status-bar cell (static ASCII `toolIcon()`)       |
 | `src/caveman.ts`  | Caveman logic, levels, prompt                            |
 | `src/rtk.ts`      | RTK prompt + bash command rewriting + sudo intercept     |
 | `src/json.ts`     | jq+TOON guidance, heuristics, system-prompt injection    |
 | `src/ponytail.ts` | Ponytail logic, levels, prompt                           |
+| `src/engram.js`   | Engram memory recall + on/off toggle handle              |
+| `title.bundle.js` | Prebuilt omp-title bundle, gated on/off in `index.ts`    |
 | `src/persist.ts`  | Disk-backed `~/.omp/agent/optimizer.json` persistence    |
 | `src/tool-result-filter.ts` | Strips model-guidance warnings from tool_result |
 | `skills/toon-json/SKILL.md` | Full jq+TOON workflow reference           |
 
 Each tool registers its own lifecycle hooks and exposes an `OptimizerHandle`
-that `/optimizer` dispatches to. All four share one `OptimizerStatus`.
+that `/optimizer` dispatches to. All six share one `OptimizerStatus`.
 
 ## Differences from upstream `pix-optimizer`
 
@@ -197,8 +202,10 @@ just an import-scope rename:
   config-seeding dependencies (external to omp, not installable). Icons are
   static ASCII; `~/.omp/agent/pix.json` initial-value seeding was removed —
   `optimizer.json` is now the only source of truth.
-- `frameLines` (`/optimizer` overlay box drawing) is a local plain-ASCII port
-  in `src/opt.ts`, minus the pi-tui ANSI-width dependency.
+- The `/optimizer` command's original overlay widget (`ui.custom`, with a
+  local plain-ASCII `frameLines` port) rendered but never received keyboard
+  input under omp — replaced with native `ctx.ui.select` dialogs + a
+  text-arg form (see Command section above).
 
 ## Development
 

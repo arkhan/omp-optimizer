@@ -28,6 +28,8 @@ const TOOL_ORDER: readonly OptimizerTool[] = [
 	"rtk",
 	"toon",
 	"ponytail",
+	"engram",
+	"title",
 ];
 
 /** Strip the leading "name [args] — " prefix from a handle's help string. */

@@ -20,6 +20,8 @@ function fakeHandles(): Record<OptimizerTool, OptimizerHandle> {
 		rtk: mk("rtk", "on", ["off", "on"]),
 		toon: mk("toon", "off", ["off", "on"]),
 		ponytail: mk("ponytail", "off", ["off", "lite", "full", "ultra"]),
+		engram: mk("engram", "on", ["off", "on"]),
+		title: mk("title", "on", ["off", "on"]),
 	};
 }
 
@@ -55,6 +57,8 @@ describe("buildOptHelp", () => {
 		expect(help).toContain("rtk: on");
 		expect(help).toContain("toon: off");
 		expect(help).toContain("ponytail: off");
+		expect(help).toContain("engram: on");
+		expect(help).toContain("title: on");
 		expect(help).toContain("caveman help");
 	});
 });
