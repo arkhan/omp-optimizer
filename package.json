@@ -1,0 +1,42 @@
+{
+	"name": "@local/omp-optimizer",
+	"version": "2.0.0-omp.1",
+	"description": "Integral omp suite (fork of @xynogen/pix-optimizer, ported off pi.dev upstream): token optimization (caveman + RTK + jq/TOON + ponytail) + 40 bundled workflow skills with live `!`cmd`` interpolation + Engram memory auto-recall + background session titles",
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"test": "bun test"
+	},
+	"files": [
+		"src",
+		"skills",
+		"README.md",
+		"LICENSE"
+	],
+	"omp": {
+		"extensions": [
+			"./src/index.ts"
+		]
+	},
+	"keywords": [
+		"omp",
+		"omp-plugin",
+		"optimizer",
+		"caveman",
+		"rtk",
+		"toon",
+		"jq",
+		"json",
+		"ponytail",
+		"skills",
+		"engram",
+		"memory",
+		"session-title",
+		"performance"
+	],
+	"author": "xynogen (original); ported to omp locally",
+	"license": "MIT",
+	"peerDependencies": {
+		"@oh-my-pi/pi-coding-agent": "*"
+	}
+}
