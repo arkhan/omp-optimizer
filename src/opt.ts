@@ -1,17 +1,18 @@
 /**
- * opt.ts — the single `/optimizer` command: an interactive overlay that fronts
- * every optimizer tool.
+ * opt.ts — the single `/optimizer` command.
  *
- * caveman / rtk / toon / ponytail each register their own lifecycle hooks but
- * expose an OptimizerHandle (name · values · current() · run()). This overlay
- * renders one SettingsList row per tool:
+ * v1 fronted the four tools with a custom overlay widget (`ui.custom`). Under
+ * omp the overlay rendered but never received keystrokes (frozen — input
+ * routing for `ui.custom` overlays doesn't reach the component), so v2 drops
+ * the widget entirely. omp exposes no extension-contributed settings section
+ * (its ExtensionDashboard is enable/disable toggles only), so the interactive
+ * path uses omp's NATIVE select dialogs (`ctx.ui.select`), and a text-arg
+ * form covers direct/scriptable use:
  *
- *   ↑↓  move between tools
- *   ←→  cycle the selected tool's value (off → level/on → …)
- *   esc close
- *
- * Selecting a value calls the handle's run(), which persists + repaints the
- * shared status cell. There is no text-arg form — the overlay is the only UI.
+ *   /optimizer                → pick a tool, then pick its value (native dialogs)
+ *   /optimizer status         → plain-text summary of all four tools
+ *   /optimizer <tool>         → current value + valid values for that tool
+ *   /optimizer <tool> <value> → set directly (headless-safe)
  */
 
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
@@ -20,11 +21,6 @@ import type {
 	OptimizerStatus,
 	OptimizerTool,
 } from "./status.ts";
-import { toolIcon } from "./status.ts";
-
-/** Min/max content width for the overlay box (excludes 4 cols of chrome). */
-const MIN_CONTENT = 28;
-const MAX_CONTENT = 60;
 
 /** Fixed render order — matches the status-bar cell. */
 const TOOL_ORDER: readonly OptimizerTool[] = [
@@ -45,34 +41,6 @@ const BAR_FILLED = "▰";
 const BAR_EMPTY = "▱";
 
 /**
- * Render a rounded modal box (local port of pix-pretty's frameLines, minus
- * the pi-tui ANSI-width dependency — content here is plain ASCII/theme-coded
- * text with no embedded wide glyphs, so plain .length padding is safe).
- */
-function frameLines(opts: {
-	width: number;
-	lines: string[];
-	color: (s: string) => string;
-	bg?: (s: string) => string;
-}): string[] {
-	const { width, lines, color } = opts;
-	const bg = opts.bg ?? ((s: string) => s);
-	const inner = Math.max(1, width - 4);
-	const dashes = "─".repeat(width - 2);
-	// biome-ignore lint: strips ANSI SGR codes to measure visible width
-	const visibleWidth = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "").length;
-	const row = (content: string): string => {
-		const pad = Math.max(0, inner - visibleWidth(content));
-		return bg(`${color("│")} ${content}${" ".repeat(pad)} ${color("│")}`);
-	};
-	return [
-		bg(color(`╭${dashes}╮`)),
-		...lines.map(row),
-		bg(color(`╰${dashes}╯`)),
-	];
-}
-
-/**
  * Render an intensity bar for a tool's current value. One segment per
  * non-"off" step in `values`; segments up to and including the current value's
  * position are filled, the rest empty. "off" → all empty.
@@ -90,14 +58,14 @@ export function levelBar(current: string, values: readonly string[]): string {
 	return BAR_FILLED.repeat(filled) + BAR_EMPTY.repeat(segments - filled);
 }
 
-/** Plain-text status fallback when there's no custom-UI host (headless/tests). */
+/** Plain-text status of every tool (also the headless fallback). */
 export function buildOptHelp(
 	handles: Record<OptimizerTool, OptimizerHandle>,
 ): string {
 	const lines = TOOL_ORDER.map(
 		(n) => `  ${n}: ${handles[n].current()}  — ${helpSummary(handles[n].help)}`,
 	);
-	return ["pix-optimizer — token tools", "", ...lines].join("\n");
+	return ["omp-optimizer — token tools", "", ...lines].join("\n");
 }
 
 export function registerOptCommand(
@@ -106,139 +74,72 @@ export function registerOptCommand(
 	_status: OptimizerStatus,
 ): void {
 	pi.registerCommand("optimizer", {
-		description: "pix-optimizer: caveman / rtk / toon / ponytail tools",
-		handler: async (_args, ctx) => {
-			const ui = ctx.ui as unknown as {
-				theme: {
-					fg(c: string, t: string): string;
-					bg(c: string, t: string): string;
-					bold(t: string): string;
-				};
-				custom?: <T>(
-					f: unknown,
-					opts?: {
-						overlay?: boolean;
-						overlayOptions?: {
-							anchor?: string;
-							width?: number;
-							maxHeight?: string;
-						};
-					},
-				) => Promise<T>;
-				notify(m: string, t?: "info" | "warning" | "error"): void;
-			};
+		description:
+			"omp-optimizer: caveman / rtk / toon / ponytail — /optimizer [tool] [value]",
+		handler: async (args, ctx) => {
+			const [toolArg, value] = args.trim().split(/\s+/).filter(Boolean);
 
-			// No custom-UI host (headless/tests) → plain status text.
-			if (typeof ui.custom !== "function") {
-				ui.notify(buildOptHelp(handles), "info");
+			// /optimizer status — plain summary, always available.
+			if (toolArg === "status") {
+				ctx.ui.notify(buildOptHelp(handles), "info");
 				return;
 			}
 
-			const nameWidth = Math.max(...TOOL_ORDER.map((n) => n.length));
-			// Widest value across all tools, so value columns line up.
-			const valueWidth = Math.max(
-				...TOOL_ORDER.flatMap((t) => handles[t].values.map((v) => v.length)),
+			// /optimizer <tool> [value] — direct form, no dialogs.
+			if (toolArg !== undefined) {
+				const tool = TOOL_ORDER.find((t) => t === toolArg);
+				if (!tool) {
+					ctx.ui.notify(
+						`Unknown tool "${toolArg}". Usage: /optimizer [${TOOL_ORDER.join("|")}] [value] — or no args for the interactive picker.`,
+						"warning",
+					);
+					return;
+				}
+				const handle = handles[tool];
+				if (value === undefined) {
+					ctx.ui.notify(
+						`${tool}: ${handle.current()} (values: ${handle.values.join(", ")})`,
+						"info",
+					);
+					return;
+				}
+				if (!handle.values.includes(value)) {
+					ctx.ui.notify(
+						`Invalid value "${value}" for ${tool}. Valid: ${handle.values.join(", ")}`,
+						"warning",
+					);
+					return;
+				}
+				await handle.run(value, ctx);
+				return;
+			}
+
+			// /optimizer — interactive picker via omp's native select dialogs.
+			if (typeof ctx.ui.select !== "function") {
+				ctx.ui.notify(buildOptHelp(handles), "info");
+				return;
+			}
+
+			const toolLabel = await ctx.ui.select(
+				"Optimizer — pick a tool",
+				TOOL_ORDER.map((t) => ({
+					label: t,
+					description: `${handles[t].current()}  ${levelBar(handles[t].current(), handles[t].values)} — ${helpSummary(handles[t].help)}`,
+				})),
 			);
-			// Fixed content width: widest help summary (the box's longest line) vs
-			// title, clamped. Fixed so the box doesn't resize as values/selection
-			// change and so the overlay can be centered at exactly this width.
-			const widestHelp = Math.max(
-				...TOOL_ORDER.map((t) => helpSummary(handles[t].help).length),
-				"󱎫  Optimizer".length,
+			if (!toolLabel) return;
+			const tool = toolLabel as OptimizerTool;
+			const handle = handles[tool];
+
+			const picked = await ctx.ui.select(
+				`Optimizer — ${tool}`,
+				handle.values.map((v) => ({
+					label: v,
+					description: v === handle.current() ? "current" : undefined,
+				})),
 			);
-			const content = Math.min(MAX_CONTENT, Math.max(MIN_CONTENT, widestHelp));
-			const boxW = content + 4; // + chrome (2 border + 2 padding)
-
-			await ui.custom<null>(
-				(
-					tui: { requestRender(): void },
-					theme: typeof ui.theme,
-					_kb: unknown,
-					done: (v: null) => void,
-				) => {
-					let selected = 0;
-
-					const cycle = (direction: -1 | 1) => {
-						const tool = TOOL_ORDER[selected] as OptimizerTool;
-						const values = handles[tool].values;
-						const cur = values.indexOf(handles[tool].current());
-						const next = (cur + direction + values.length) % values.length;
-						handles[tool].run(values[next] ?? "", ctx);
-					};
-
-					const move = (direction: -1 | 1) => {
-						selected =
-							(selected + direction + TOOL_ORDER.length) % TOOL_ORDER.length;
-					};
-
-					return {
-						render: () => {
-							const rows = TOOL_ORDER.map((tool, i) => {
-								const on = handles[tool].current() !== "off";
-								const sel = i === selected;
-								const cursor = sel ? theme.fg("accent", "→") : " ";
-								const glyph = theme.fg(on ? "accent" : "dim", toolIcon(tool));
-								const name = theme.fg(
-									sel ? "accent" : on ? "text" : "muted",
-									tool.padEnd(nameWidth),
-								);
-								const cur = handles[tool].current();
-								const value = theme.fg(
-									on ? "success" : "dim",
-									cur.padEnd(valueWidth),
-								);
-								const bar = theme.fg(
-									on ? "accent" : "dim",
-									levelBar(cur, handles[tool].values),
-								);
-								return `${cursor} ${glyph}  ${name}  ${value}  ${bar}`;
-							});
-							const lines = [
-								theme.fg("accent", theme.bold("󱎫  Optimizer")),
-								"",
-								...rows,
-								"",
-								theme.fg(
-									"dim",
-									helpSummary(
-										handles[TOOL_ORDER[selected] as OptimizerTool].help,
-									),
-								),
-								"",
-								theme.fg("dim", "←→ change · ↑↓ move · esc close"),
-							];
-							return frameLines({
-								width: boxW,
-								lines,
-								color: (s) => theme.fg("accent", s),
-								bg: (s) => theme.bg("customMessageBg", s),
-							});
-						},
-						invalidate: () => {},
-						handleInput: (data: string) => {
-							if (data === "k" || data === "\u001b[A") move(-1);
-							else if (data === "j" || data === "\u001b[B") move(1);
-							else if (data === "h" || data === "\u001b[D") cycle(-1);
-							else if (
-								data === "l" ||
-								data === "\u001b[C" ||
-								data === " " ||
-								data === "\r"
-							)
-								cycle(1);
-							else if (data === "\u001b" || data === "q") {
-								done(null);
-								return;
-							} else return;
-							tui.requestRender();
-						},
-					};
-				},
-				{
-					overlay: true,
-					overlayOptions: { anchor: "center", width: boxW, maxHeight: "80%" },
-				},
-			);
+			if (!picked || picked === handle.current()) return;
+			await handle.run(picked, ctx);
 		},
 	});
 }

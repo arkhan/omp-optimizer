@@ -26,13 +26,18 @@ Since v2.0.0 this package also absorbs three formerly standalone plugins:
 One command opens an interactive overlay that fronts every tool:
 
 ```text
-/optimizer                 → open the overlay (←→ cycle value, ↑↓ move, esc close)
+/optimizer                 → pick a tool, then pick its value (native select dialogs)
+/optimizer status          → plain-text summary of all four tools
+/optimizer <tool>          → current value + valid values for that tool
+/optimizer <tool> <value>  → set directly (headless-safe)
 ```
 
-There is no text-arg form: the overlay is the only UI. Selecting a value calls
-the tool's `run()` handler, which persists the new value and repaints the
-shared status cell. Headless/test fallbacks (no `ctx.ui.custom` host) print a
-plain status summary via `ctx.ui.notify`.
+v1 used a custom overlay widget (`ui.custom`) — under omp it rendered but
+never received keystrokes, so it was replaced. omp exposes no
+extension-contributed settings section (its ExtensionDashboard is
+enable/disable toggles only), so the interactive path uses omp's native
+`ctx.ui.select` dialogs. Every path ends in the tool's `run()` handler, which
+persists the new value and repaints the shared status cell.
 
 State persists to `~/.omp/agent/optimizer.json` (caveman/rtk/toon/ponytail),
 keyed by tool name. Each tool reads its saved value on `session_start` and
@@ -44,7 +49,7 @@ A single cell always shows all four tool icons in a fixed left-to-right order,
 color-coded by state: **accent** when the tool is enabled, **dim** when
 disabled. The cell is never empty.
 
-Icons are static ASCII glyphs (`Cv`, `Rk`, `Tn`, `Pt`) — the upstream
+Icons are static ASCII glyphs (`Cv`, `Rk`, `Tn`, `Pt`, `En`) — the upstream
 `pix-pretty` nerd-font/unicode icon catalog was dropped in this port (it was an
 external dependency not available to omp extensions). No configuration knob;
 if a themed icon set matters, extend `TOOL_ICON_ASCII` in `src/status.ts`.
