@@ -61,7 +61,10 @@ if a themed icon set matters, extend `TOOL_ICON_ASCII` in `src/status.ts`.
 
 ### Caveman Mode (`Cv`)
 
-Cuts ~75% of output tokens while keeping full technical accuracy.
+Cuts output tokens while keeping full technical accuracy — savings are workload-dependent,
+not a fixed percentage: heaviest on prose-style explanations (fluff/hedging/filler removed),
+much smaller on agentic coding turns where code blocks, diffs, and tool output already stay
+verbatim and uncompressed. No independent measurement has been run for this fork.
 
 | Level | Description                  |
 |-------|------------------------------|
@@ -182,6 +185,20 @@ Upstream 1.1.15–1.1.18 reviewed 2026-07-24: 1.1.17's portable capability
 probes (`canExecute` for jq/toon/rtk) already ported; 1.1.18 only removed the
 pix-data `pix.json` fallback this port never had; the rest is biome
 formatting, intentionally not imported.
+
+Caveman prompt text (`src/caveman.ts` `BASE`/`SAFETY`) separately tracks
+[`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) (the
+original Claude Code skill this mode's wording is modeled on — distinct
+lineage from `pix-optimizer`/`pi-caveman` above). Synced through **v1.10.0**'s
+`fix(skill): negation safety, tool-call silence, language-drift hardening`:
+never-drop-negation rule, tool-call silence defined as no pre/post-call
+narration, language rule scoped to every line (no mid-reply drift) with
+grammatical particles/case markers exempted from article-dropping, and a
+persisted-text boundary (commits/PR/issue text/docs/memory saves write
+normal prose, only interactive replies compress). v1.10.0's other changes
+(`/caveman-stats` net-savings, Windows-safe compress, shared hook parser,
+installer layout) belong to the upstream CLI/hook infrastructure this port
+never carried — no equivalent surface exists here to update.
 
 Ported to omp's `ExtensionAPI` (`@oh-my-pi/pi-coding-agent`), which differs
 from upstream `pi-coding-agent` in ways that required real code changes, not
