@@ -192,4 +192,16 @@ describe("buildPrompt", () => {
 		expect(ultra).toContain("YAGNI extremist");
 		expect(lite).not.toContain("YAGNI extremist");
 	});
+
+	it("includes codebase-reuse rung and root-cause bug-fix rule", () => {
+		const full = buildPrompt("full");
+		expect(full).toContain("Already exists in this codebase");
+		expect(full).toContain("Bug fix = root cause, not symptom");
+	});
+
+	it("requires understanding the problem before the ladder", () => {
+		const full = buildPrompt("full");
+		expect(full).toContain("runs AFTER you understand the problem");
+		expect(full).toContain("never skip understanding the problem");
+	});
 });

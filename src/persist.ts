@@ -2,7 +2,7 @@
  * persist.ts — disk-backed persistence for the /optimizer tool states.
  *
  * caveman/ponytail previously saved only to the session log (lost on a fresh
- * session); rtk/toon never persisted at all. This stores every tool's current
+ * session); rtk never persisted at all. This stores every tool's current
  * value in one file under the agent dir so the picker survives a full quit and
  * restart. Each tool reads its value on session_start and writes on run().
  *
@@ -10,9 +10,26 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { getAgentDir } from "@oh-my-pi/pi-coding-agent";
 import type { OptimizerTool } from "./status.ts";
+
+/**
+ * Local re-impl of @oh-my-pi/pi-coding-agent's getAgentDir() — avoids
+ * pulling the whole framework's dep tree (onnxruntime, sherpa-onnx, mupdf,
+ * puppeteer-core...) into this plugin's node_modules just for one path
+ * helper. Same contract: PI_CODING_AGENT_DIR override (tilde-expanded),
+ * default ~/.omp/agent (see `omp --help` env var reference).
+ */
+function getAgentDir(): string {
+	const envDir = process.env.PI_CODING_AGENT_DIR;
+	if (envDir) {
+		if (envDir === "~") return homedir();
+		if (envDir.startsWith("~/")) return join(homedir(), envDir.slice(2));
+		return envDir;
+	}
+	return join(homedir(), ".omp", "agent");
+}
 
 type OptimizerFileConfig = Partial<Record<OptimizerTool, string>>;
 

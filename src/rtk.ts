@@ -93,15 +93,6 @@ export function applyRtkRewrite(
 	return true;
 }
 
-const RTK_SYSTEM_PROMPT = `# RTK — token-optimized command wrapper
-
-Prefix shell commands with \`rtk\` (e.g. \`rtk git status\`). RTK compacts output for git, gh, cargo, npm/pnpm/yarn/bun, tsc, lint, vitest/jest/playwright, docker, kubectl, ls, grep, prisma — and passes anything else through unchanged, so it's always safe.
-
-Prefix EVERY segment in a chain, not just the first:
-\`rtk git add . && rtk git commit -m "msg" && rtk git push\`
-
-RTK also has filtering subcommands the auto-rewriter won't add — reach for these yourself when useful: \`rtk err <cmd>\` (errors only), \`rtk summary <cmd>\`, \`rtk log <file>\` (dedup), \`rtk json <file>\` (structure), \`rtk test <cmd>\` (failures only), \`rtk gain\` (savings stats).`;
-
 // Commands that should be prefixed with rtk
 const RTK_COMMANDS = new Set([
 	"git",
@@ -262,13 +253,15 @@ export function rtk(
 		return rtkStatus;
 	};
 
-	// Inject RTK system prompt + detect sudo_run tool availability.
-	pi.on("before_agent_start", async (event) => {
+	// Detect sudo_run tool availability. No system-prompt injection — the
+	// tool_call rewrite hook below adds the rtk prefix on its own, so this
+	// stays zero always-on context cost (ponytail: manual `rtk err`/`rtk
+	// summary`/`rtk test` subcommands are no longer advertised to the model;
+	// re-add a prompt here if surfacing those becomes worth the token cost).
+	pi.on("before_agent_start", (_event) => {
 		// Detect sudo_run from the currently active tool list for this session.
 		hasSudoRunTool = pi.getActiveTools().includes("sudo_run");
-
-		if (!enabled) return undefined;
-		return { systemPromptAppend: RTK_SYSTEM_PROMPT };
+		return undefined;
 	});
 
 	// Keep the status indicator in sync across the agent lifecycle. Probe

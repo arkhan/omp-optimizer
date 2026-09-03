@@ -19,7 +19,16 @@ describe("LEVELS", () => {
 	});
 
 	it("contains all expected levels", () => {
-		const expected: Level[] = ["off", "lite", "full", "ultra", "micro"];
+		const expected: Level[] = [
+			"off",
+			"lite",
+			"full",
+			"ultra",
+			"micro",
+			"wenyan-lite",
+			"wenyan-full",
+			"wenyan-ultra",
+		];
 		for (const l of expected) expect(LEVELS).toContain(l);
 	});
 });
@@ -54,6 +63,12 @@ describe("STATUS_LABELS", () => {
 		expect(STATUS_LABELS.full).toBe("FULL");
 		expect(STATUS_LABELS.ultra).toBe("ULTRA");
 		expect(STATUS_LABELS.micro).toBe("MICRO");
+	});
+
+	it("wenyan levels have distinct labels", () => {
+		expect(STATUS_LABELS["wenyan-lite"]).toBe("WENYAN-LITE");
+		expect(STATUS_LABELS["wenyan-full"]).toBe("WENYAN-FULL");
+		expect(STATUS_LABELS["wenyan-ultra"]).toBe("WENYAN-ULTRA");
 	});
 });
 
@@ -142,8 +157,8 @@ describe("buildHelp", () => {
 		expect(buildHelp("off")).toContain("config");
 	});
 
-	it("does not mention wenyan", () => {
-		expect(buildHelp("off").toLowerCase()).not.toContain("wenyan");
+	it("mentions wenyan levels", () => {
+		expect(buildHelp("off").toLowerCase()).toContain("wenyan");
 	});
 });
 
@@ -199,6 +214,23 @@ describe("buildPrompt", () => {
 		expect(lite).toContain("Keep articles");
 		expect(ultra).toContain("Strip conjunctions");
 		expect(lite).not.toContain("Strip conjunctions");
+	});
+
+	it("includes wenyan levels with distinct classical-chinese instructions", () => {
+		const wenyanLite = buildPrompt("wenyan-lite");
+		const wenyanFull = buildPrompt("wenyan-full");
+		const wenyanUltra = buildPrompt("wenyan-ultra");
+		expect(wenyanLite).toContain("CAVEMAN MODE");
+		expect(wenyanLite).toContain("Semi-classical");
+		expect(wenyanFull).toContain("文言文");
+		expect(wenyanUltra).toContain("Extreme classical compression");
+		expect(wenyanLite).not.toContain("文言文");
+	});
+
+	it("preserves user language and persists across turns", () => {
+		const full = buildPrompt("full");
+		expect(full).toContain("Persistence");
+		expect(full).toContain("preserve user's dominant language");
 	});
 
 	it("ultra never contradicts base abbreviation/arrow ban", () => {

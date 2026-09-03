@@ -1,16 +1,16 @@
 /**
  * status.ts — shared status-bar indicator for the optimizer suite.
  *
- * caveman / rtk / toon / ponytail / engram / title each toggle independently,
+ * caveman / rtk / ponytail / engram / title each toggle independently,
  * but they're all the same class of thing (token/workflow optimization
- * tools), so they share ONE status cell instead of six. Each tool reports its
- * on/off state into a single registry; the cell renders ALL six icons in a
+ * tools), so they share ONE status cell instead of five. Each tool reports its
+ * on/off state into a single registry; the cell renders ALL five icons in a
  * fixed order — accent-colored when the tool is enabled, dim when disabled.
  * The cell is never empty.
  *
- *   all on:        all six accent
+ *   all on:        all five accent
  *   caveman off:   caveman dim, rest accent
- *   all off:       all six dim
+ *   all off:       all five dim
  */
 
 import type {
@@ -23,7 +23,6 @@ import type {
 const TOOL_ICON_ASCII: Record<OptimizerTool, string> = {
 	caveman: "Cv",
 	rtk: "Rk",
-	toon: "Tn",
 	ponytail: "Pt",
 	engram: "En",
 	title: "Tt",
@@ -33,14 +32,13 @@ const TOOL_ICON_ASCII: Record<OptimizerTool, string> = {
 // user's terminal font: that block has spotty monospace-font coverage.
 // Swapped for older/emoji glyphs confirmed to render there (engram's 🧠
 // notify already displays fine), one per tool, in TOOL_ORDER:
-//   caveman ⛏️ rtk 🗡️ toon </> (plain ascii, no glyph risk) ponytail ✂️
+//   caveman ⛏️ rtk 🗡️ ponytail ✂️
 //   engram 🧠 title ✍️
 // Nerd font catalog still never ported (see index.ts) — nerd preset falls
 // back to this same set.
 const TOOL_ICON_UNICODE: Record<OptimizerTool, string> = {
 	caveman: "⛏️",
 	rtk: "🗡️",
-	toon: "</>",
 	ponytail: "✂️",
 	engram: "🧠",
 	title: "✍️",
@@ -56,7 +54,7 @@ let activePreset: SymbolPreset = "unicode";
  * tool's internals.
  */
 export interface OptimizerHandle {
-	/** Tool name, e.g. "caveman" / "rtk" / "toon" / "engram" / "title". */
+	/** Tool name, e.g. "caveman" / "rtk" / "ponytail" / "engram" / "title". */
 	name: OptimizerTool;
 	/** One-line summary shown in the command's status/help output. */
 	help: string;
@@ -75,7 +73,6 @@ export const STATUS_KEY = "pix-optimizer";
 export type OptimizerTool =
 	| "caveman"
 	| "rtk"
-	| "toon"
 	| "ponytail"
 	| "engram"
 	| "title";
@@ -89,7 +86,6 @@ export function toolIcon(tool: OptimizerTool): string {
 const TOOL_ORDER: readonly OptimizerTool[] = [
 	"caveman",
 	"rtk",
-	"toon",
 	"ponytail",
 	"engram",
 	"title",

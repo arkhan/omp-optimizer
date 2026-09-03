@@ -1,7 +1,7 @@
 /**
  * opt.ts — the single `/optimizer` command.
  *
- * v1 fronted the four tools with a custom overlay widget (`ui.custom`). Under
+ * v1 fronted the tools with a custom overlay widget (`ui.custom`). Under
  * omp the overlay rendered but never received keystrokes (frozen — input
  * routing for `ui.custom` overlays doesn't reach the component), so v2 drops
  * the widget entirely. omp exposes no extension-contributed settings section
@@ -10,7 +10,7 @@
  * form covers direct/scriptable use:
  *
  *   /optimizer                → pick a tool, then pick its value (native dialogs)
- *   /optimizer status         → plain-text summary of all four tools
+ *   /optimizer status         → plain-text summary of all five tools
  *   /optimizer <tool>         → current value + valid values for that tool
  *   /optimizer <tool> <value> → set directly (headless-safe)
  */
@@ -26,7 +26,6 @@ import type {
 const TOOL_ORDER: readonly OptimizerTool[] = [
 	"caveman",
 	"rtk",
-	"toon",
 	"ponytail",
 	"engram",
 	"title",
@@ -77,7 +76,7 @@ export function registerOptCommand(
 ): void {
 	pi.registerCommand("optimizer", {
 		description:
-			"omp-optimizer: caveman / rtk / toon / ponytail — /optimizer [tool] [value]",
+			"omp-optimizer: caveman / rtk / ponytail — /optimizer [tool] [value]",
 		handler: async (args, ctx) => {
 			const [toolArg, value] = args.trim().split(/\s+/).filter(Boolean);
 

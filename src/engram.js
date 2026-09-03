@@ -114,7 +114,7 @@ async function injectMemoryContext(pi, ctx, project, status) {
   const raw = ctxRes?.context?.trim();
   const { text, count } = raw ? summarizeContext(raw) : { text: "", count: 0 };
 
-  // Icono en la celda compartida del optimizer (misma fila que Cv Rk Tn Pt):
+  // Icono en la celda compartida del optimizer (misma fila que Cv Rk Pt):
   // accent cuando se cargaron observaciones, dim cuando no (o server caído).
   // Antes pintaba su propia celda `setStatus("engram", …)` — línea separada
   // en la status bar; integrado al merge v2.0.0. 🧠/En sigue el symbolPreset
@@ -133,7 +133,7 @@ async function injectMemoryContext(pi, ctx, project, status) {
 export default function (pi, status) {
   pi.setLabel("Engram Recall");
 
-  // on/off toggle, mirrors caveman/rtk/toon/ponytail: persisted in
+  // on/off toggle, mirrors caveman/rtk/ponytail: persisted in
   // optimizer.json, default "on". Off skips the HTTP round trip entirely
   // (not just the injection) — a user who disabled it doesn't want the
   // request either.

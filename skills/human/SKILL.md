@@ -77,6 +77,11 @@ In **edit** mode, your job is to:
 - **Missing bridge sentences**: Each paragraph should connect to the last. If paragraphs could be rearranged without the reader noticing, add connective tissue.
 - **Compulsive rule of three**: Vary groupings. Use two items, four items, or a full sentence instead of triads. Max one "adjective, adjective, and adjective" pattern per piece.
 
+### Passive voice and subjectless fragments
+
+- AI often hides the actor or drops the subject entirely: "No configuration file needed," "The results are preserved automatically," "Errors are logged automatically." Rewrite in active voice when doing so makes the sentence clearer and names who or what performs the action.
+- Not every passive construction is a tell — passive voice is sometimes the right choice (unknown or irrelevant actor, formal/scientific register). Flag it only when it reads as evasive or when naming the actor adds real information. Adapted from `blader/humanizer` P13.
+
 ### Words and phrases to replace
 
 Words are organized into three tiers based on how reliably they signal AI-generated text. This tiered approach — adapted from [brandonwise/humanizer](https://github.com/brandonwise/humanizer)'s vocabulary research — reduces false positives on words that are fine in isolation but suspicious in clusters.
@@ -349,6 +354,11 @@ These slot-fill constructions signal that a sentence was generated, not written.
 
 - AI creates false breadth by pairing unrelated extremes: "from the Big Bang to dark matter," "from ancient civilizations to modern startups." These sound sweeping but say nothing. List the actual topics or pick the one that matters.
 
+### Diff-anchored writing
+
+- Documentation or comments written as a narration of the change rather than a description of the thing as it now stands: "This function was added to replace the previous approach of iterating through all items, which caused O(n²) performance." Unless the document is inherently version-scoped (changelogs, release notes, migration guides), it should read coherently without knowing what changed in the last commit.
+- Fix: describe the current behavior on its own terms. "This function uses a hash map for O(1) lookups, avoiding the O(n²) cost of naive iteration." Move genuine history to a changelog. Adapted from `blader/humanizer` P30.
+
 ### Inline-header lists
 
 - Bullet lists where each item starts with a bold header that repeats itself: "**Performance:** Performance improved by..." Strip the bold header and write the point directly. If the list items need headers, they should probably be paragraphs.
@@ -423,6 +433,7 @@ These slot-fill constructions signal that a sentence was generated, not written.
 ### Rhetorical question openers
 
 - "But what does this mean for developers?" / "So why should you care?" / "What's next?" — AI uses rhetorical questions to stall before the actual point. If you know the answer, just say it. Rhetorical questions are earned by strong setup, not dropped as section transitions.
+- **Fake-candid pause variant**: "Is it worth the price? Honestly? It depends." / "Look, it's complicated." — a one-word or short theatrical aside before the "real" answer, manufacturing intimacy before an ordinary point. Cut the pause and state the point directly: "Whether it's worth the price depends on how often you'll use it." Adapted from `blader/humanizer` P33.
 
 ### Parenthetical hedging
 
@@ -463,6 +474,11 @@ These slot-fill constructions signal that a sentence was generated, not written.
 - Fix: cut the labeling sentence and let the explanation that follows do the work directly. Or restructure so the item you wanted to highlight is positioned first or expanded with specifics, making the label redundant.
 - Example. Before: "→ Two separate indexes for tiered storage. That last move is the contrarian one. Co-locating related data usually helps cache locality." After: "→ Two separate indexes for tiered storage. Co-locating related data usually helps cache locality, but splitting the indexes is what makes the hot path cheap." The contrast carries itself; the label is gone.
 
+### Aphorism formulas
+
+- AI turns ordinary claims into reusable-sounding aphorisms that gesture at profundity without adding precision: "Symmetry is the language of trust," "Efficiency becomes a trap when teams forget the human layer," "X is not a tool but a mirror." Pattern: abstract noun + is/becomes + "the language/currency/architecture of" + abstract noun, or an X-is-not-Y-but-Z inversion used as a standalone punchline.
+- Fix: replace the formula with the concrete claim it's gesturing at. "Symmetry is the language of trust" becomes "Symmetric layouts often feel more predictable to users." Adapted from `blader/humanizer` P32.
+
 ### Excessive structure
 
 - Too many headers in short text: more than 3 headings in under 300 words is almost always AI trying to look organized. Merge sections or use prose transitions instead.
@@ -481,6 +497,7 @@ These aren't individual word or phrase problems — they're patterns in how the 
 - **Read-aloud test**: If the text sounds like it could be read by a text-to-speech engine without sounding weird, it's probably too uniform. Human writing has rhythm that resists robotic delivery.
 - **Missing first-person perspective**: Where appropriate, the writer should have opinions, preferences, and reactions. AI is relentlessly neutral. If the piece is supposed to have a voice, the absence of "I think," "in my experience," or a stated preference is itself an AI tell.
 - **Over-polishing**: Aggressively editing out every irregularity can push human writing *toward* AI statistical profiles. Natural disfluency, idiosyncratic word choices, and uneven pacing are what keep text out of the "AI-generated" classification. Don't sand away all personality in pursuit of clean prose. This skill should make writing sound more human, not less — if you apply every rule at maximum strictness, you risk creating the very uniformity you're trying to avoid.
+- **Manufactured punchlines and staccato drama**: stacking short declarative fragments to engineer drama — "It had no preference. No prior. No nostalgia. The old rules were gone." A single short sentence for emphasis is natural; a run of them in a row is a tell. Vary the rhythm instead: "AlphaEvolve changed the search because it did not favor symmetry or human-looking designs." Adapted from `blader/humanizer` P31.
 
 ### Vocabulary diversity (stylometric)
 

@@ -12,7 +12,6 @@ const tag = (c: string, t: string) => `<${c}>${t}</${c}>`;
 // Icons resolve against the global pix-pretty mode (default "nerd" in tests).
 const CV = toolIcon("caveman");
 const RK = toolIcon("rtk");
-const TN = toolIcon("toon");
 const PT = toolIcon("ponytail");
 const EN = toolIcon("engram");
 const TT = toolIcon("title");
@@ -21,40 +20,40 @@ describe("renderStatus", () => {
 	it("shows ALL icons in order, accent when enabled", () => {
 		expect(
 			renderStatus(
-				{ caveman: true, rtk: true, toon: true, ponytail: true },
+				{ caveman: true, rtk: true, ponytail: true },
 				tag,
 			),
 		).toBe(
-			`<accent>${CV}</accent>  <accent>${RK}</accent>  <accent>${TN}</accent>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<accent>${CV}</accent>  <accent>${RK}</accent>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("dims disabled tools but still shows them", () => {
 		expect(
 			renderStatus(
-				{ caveman: false, rtk: true, toon: true, ponytail: true },
+				{ caveman: false, rtk: true, ponytail: true },
 				tag,
 			),
 		).toBe(
-			`<dim>${CV}</dim>  <accent>${RK}</accent>  <accent>${TN}</accent>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <accent>${RK}</accent>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("all dim when nothing enabled (cell never empty)", () => {
 		expect(renderStatus({}, tag)).toBe(
-			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${TN}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("preserves fixed order regardless of insertion order", () => {
-		expect(renderStatus({ toon: true, caveman: true }, tag)).toBe(
-			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${TN}</accent>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+		expect(renderStatus({ ponytail: true, caveman: true }, tag)).toBe(
+			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("resolves icons via the shared catalog (non-empty glyphs)", () => {
 		// toolIcon delegates to pix-pretty's icon(); every tool has a glyph.
-		expect([CV, RK, TN, PT, EN, TT].every((g) => g.length > 0)).toBe(true);
+		expect([CV, RK, PT, EN, TT].every((g) => g.length > 0)).toBe(true);
 	});
 });
 
@@ -79,9 +78,9 @@ describe("OptimizerStatus", () => {
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
 		expect(last.key).toBe(STATUS_KEY);
-		// caveman + toon + ponytail still unset (dim), rtk accent.
+		// caveman + ponytail still unset (dim), rtk accent.
 		expect(last.text).toBe(
-			`<dim>${CV}</dim>  <accent>${RK}</accent>  <dim>${TN}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <accent>${RK}</accent>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
@@ -89,11 +88,11 @@ describe("OptimizerStatus", () => {
 		const status = new OptimizerStatus();
 		const ctx = fakeCtx();
 		status.set("caveman", true, ctx as never);
-		status.set("toon", true, ctx as never);
+		status.set("ponytail", true, ctx as never);
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
 		expect(last.text).toBe(
-			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${TN}</accent>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
@@ -105,7 +104,7 @@ describe("OptimizerStatus", () => {
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
 		expect(last.text).toBe(
-			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${TN}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 });
