@@ -108,3 +108,35 @@ describe("OptimizerStatus", () => {
 		);
 	});
 });
+
+describe("toolIcon — symbolPreset switching", () => {
+	function presetCtx(preset: "ascii" | "unicode" | "nerd") {
+		return {
+			ui: {
+				setStatus: () => {},
+				theme: { fg: (_c: string, t: string) => t, getSymbolPreset: () => preset },
+			},
+		} as const;
+	}
+
+	it("resolves distinct real Nerd Font glyphs under nerd preset (not the color-emoji fallback)", () => {
+		const status = new OptimizerStatus();
+		status.set("caveman", true, presetCtx("nerd") as never);
+		const nerdGlyph = toolIcon("caveman");
+		status.set("caveman", true, presetCtx("unicode") as never);
+		const unicodeGlyph = toolIcon("caveman");
+		status.set("caveman", true, presetCtx("ascii") as never);
+		const asciiGlyph = toolIcon("caveman");
+
+		expect(nerdGlyph).toBe("\uf066"); // fa-compress, verified against nerd-fonts glyphnames.json
+		expect(nerdGlyph).not.toBe(unicodeGlyph);
+		expect(unicodeGlyph).toBe("⛏️");
+		expect(asciiGlyph).toBe("Cv");
+
+		// Restore this module's baseline preset so later test files (and a
+		// re-run of this one) aren't affected by activePreset being module-
+		// level shared state — CV/RK/PT/EN/TT above were captured once under
+		// "unicode" at import time and must stay valid for the rest of the run.
+		status.set("caveman", true, presetCtx("unicode") as never);
+	});
+});

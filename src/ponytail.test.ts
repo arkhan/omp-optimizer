@@ -175,33 +175,38 @@ describe("buildPrompt", () => {
 	it("includes BASE ladder for all active levels", () => {
 		for (const l of ["lite", "full", "ultra"] as Level[]) {
 			expect(buildPrompt(l)).toContain("PONYTAIL MODE ACTIVE");
-			expect(buildPrompt(l)).toContain("first rung that holds");
+			expect(buildPrompt(l)).toContain("first option that fully works");
 		}
 	});
 
 	it("includes SAFETY clause for all active levels", () => {
 		for (const l of ["lite", "full", "ultra"] as Level[]) {
-			expect(buildPrompt(l)).toContain("When NOT to be lazy");
+			expect(buildPrompt(l)).toContain("Never cut:");
 		}
 	});
 
 	it("each level has distinct intensity instructions", () => {
 		const lite = buildPrompt("lite");
 		const ultra = buildPrompt("ultra");
-		expect(lite).toContain("name the lazier alternative");
+		expect(lite).toContain("name the smaller option");
 		expect(ultra).toContain("YAGNI extremist");
 		expect(lite).not.toContain("YAGNI extremist");
 	});
 
-	it("includes codebase-reuse rung and root-cause bug-fix rule", () => {
+	it("maps change scope and reuse before writing", () => {
 		const full = buildPrompt("full");
-		expect(full).toContain("Already exists in this codebase");
-		expect(full).toContain("Bug fix = root cause, not symptom");
+		expect(full).toContain("List every place the change must reach");
+		expect(full).toContain("Already in this codebase");
+		expect(full).toContain("grep every caller");
 	});
 
-	it("requires understanding the problem before the ladder", () => {
+	it("marks shortcuts with the neutral marker and still recognizes the old one", () => {
 		const full = buildPrompt("full");
-		expect(full).toContain("runs AFTER you understand the problem");
-		expect(full).toContain("never skip understanding the problem");
+		expect(full).toContain("`shortcut: <the limit>, <when to upgrade>`");
+		expect(full).toContain("Older `ponytail:` markers");
+	});
+
+	it("ends the reply with skipped/unchecked lines", () => {
+		expect(buildPrompt("full")).toContain("what you skipped or did not check");
 	});
 });

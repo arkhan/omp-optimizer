@@ -30,18 +30,34 @@ const TOOL_ICON_ASCII: Record<OptimizerTool, string> = {
 
 // v1 used Enclosed Alphanumerics (Ⓒ Ⓡ Ⓣ Ⓟ) — confirmed broken (tofu) in the
 // user's terminal font: that block has spotty monospace-font coverage.
-// Swapped for older/emoji glyphs confirmed to render there (engram's 🧠
-// notify already displays fine), one per tool, in TOOL_ORDER:
+// Swapped for emoji glyphs confirmed to render there (engram's 🧠 notify
+// already displays fine), one per tool, in TOOL_ORDER:
 //   caveman ⛏️ rtk 🗡️ ponytail ✂️
 //   engram 🧠 title ✍️
-// Nerd font catalog still never ported (see index.ts) — nerd preset falls
-// back to this same set.
+// These carry VS16 (emoji-presentation) and render in the font's fixed
+// emoji colors, ignoring ENABLED_COLOR/DISABLED_COLOR entirely — the
+// accent/dim distinction this cell exists for is invisible under this set.
 const TOOL_ICON_UNICODE: Record<OptimizerTool, string> = {
 	caveman: "⛏️",
 	rtk: "🗡️",
 	ponytail: "✂️",
 	engram: "🧠",
 	title: "✍️",
+};
+
+// Real Nerd Font glyphs (Private Use Area, monochrome — these DO respect
+// ENABLED_COLOR/DISABLED_COLOR, unlike the color-emoji unicode set above).
+// Codepoints verified against nerd-fonts' own glyphnames.json (classic
+// Font Awesome 4 icons, present in every Nerd Font variant since v1):
+//   fa-compress U+F066, fa-terminal U+F120, fa-cut U+F0C4, fa-pencil U+F040.
+// engram uses fa-brain U+EE9C (Font Awesome 5/6 extension range, added
+// later — still standard in current Nerd Font Complete builds).
+const TOOL_ICON_NERD: Record<OptimizerTool, string> = {
+	caveman: "\uf066",
+	rtk: "\uf120",
+	ponytail: "\uf0c4",
+	engram: "\uee9c",
+	title: "\uf040",
 };
 
 /** Set by `OptimizerStatus.paint()` from the live theme so icons follow the
@@ -77,9 +93,14 @@ export type OptimizerTool =
 	| "engram"
 	| "title";
 
-/** Glyph for a tool, resolved against the last-seen `symbolPreset` (ascii stays plain text; unicode/nerd use the emoji set — see ceiling note above). */
+/** Glyph for a tool, resolved against the last-seen `symbolPreset`: "ascii"
+ * stays plain text, "nerd" uses real monochrome Nerd Font glyphs, anything
+ * else ("unicode", or an unset/future value) falls back to the color-emoji
+ * set — see the ceiling note above `TOOL_ICON_UNICODE`. */
 export function toolIcon(tool: OptimizerTool): string {
-	return activePreset === "ascii" ? TOOL_ICON_ASCII[tool] : TOOL_ICON_UNICODE[tool];
+	if (activePreset === "ascii") return TOOL_ICON_ASCII[tool];
+	if (activePreset === "nerd") return TOOL_ICON_NERD[tool];
+	return TOOL_ICON_UNICODE[tool];
 }
 
 /** Fixed left-to-right order of icons in the cell. */

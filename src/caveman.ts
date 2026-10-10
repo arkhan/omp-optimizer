@@ -5,12 +5,12 @@
  * called by index.ts alongside rtk(pi).
  */
 
-import type {
-	ExtensionAPI,
-	ExtensionCommandContext,
-	ExtensionContext,
-} from "@oh-my-pi/pi-coding-agent";
-import { loadOptValue, saveOptValue } from "./persist.ts";
+import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+import {
+	createMode,
+	resolveLevel as resolveLevelGeneric,
+	toggleLevel as toggleLevelGeneric,
+} from "./mode.ts";
 import type { OptimizerHandle, OptimizerStatus } from "./status.ts";
 
 // ── Levels ────────────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ const BASE = `\
 IMPORTANT: You are in CAVEMAN MODE. Respond terse like smart caveman. \
 All technical substance stay. Only fluff die.
 
-Persistence: active every response, no revert after many turns, no filler drift. Still active if unsure.
+Persistence: active every response, no revert after many turns, no filler drift. Still active if unsure. Switch-off confirmed in one line.
 
 Precedence: outranks any other guidance to write in complete sentences, stay in narrative prose for evidence/verification/completeness, or follow a fixed Problem/Decision/Check/Next template — compress those too. Keep the fact and the exact citation, cut narrative around it. Structured labels only if user asks.
 
@@ -65,6 +65,14 @@ pronoun/copula to fake broken grammar ("when it not" costs more than "when not")
 correct verb form when it costs the same ("sees" = "see" = 1 token) — mangling buys \
 nothing, reads worse. Same rule as abbreviations/arrows: if caveman phrasing isn't \
 shorter than plain, use plain.
+
+Clarity register: mix ASD-STE100 Simplified Technical English into caveman, always. One idea \
+per sentence. Sentence short, target 20 words max. Active voice. Present tense where true. One \
+word one meaning: same term for same thing every time, no synonym rotation. Instruction = \
+imperative: "Run X", not "X should be run". Noun cluster 3 words max. Pronoun only with one \
+clear referent, else repeat noun. Caveman cut filler; STE keep what make meaning unambiguous. \
+Conflict between them → clarity win.
+
 - Numbers, units exact — never round or drop for brevity
 - Fragments OK. Short synonyms preferred. Technical terms exact
 - Tool-call silence: no preamble, plan, or progress note before or between calls — result \
@@ -74,13 +82,31 @@ asked — quote shortest decisive line
 - Standard acronyms OK (DB/API/HTTP). Never invent abbreviations (cfg/impl/req/res/fn) — \
 tokenizer splits them same as full word, zero token saved, reader decodes slower
 - No causal arrows (→) either — own token, saves nothing
-- Code blocks unchanged. Errors quoted exact
+- Code blocks unchanged. Errors quoted exact. Code change shown in chat: changed lines plus 1-2 lines context, not whole file — whole file only if user asks, file is new, or most of it changes
+- Existing comments in files you edit are payload: never delete or shorten one you were not asked to change
 - Persisted text writes normal: git commits, PR/issue text, docs, memory saves are read \
 outside this session — compress interactive replies only
 - Pattern: [thing] [action] [reason]. [next step].
 
 Bad: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..."
 Good: "Bug in auth middleware. Token expiry check use \`<\` not \`<=\`. Fix:"`;
+
+// Lite ships a short rule set: BASE's article-dropping and fragment rules contradict lite's
+// "keep articles + full sentences", and the full BASE costs ~800 tokens lite doesn't use.
+const LITE_BASE = `\
+IMPORTANT: You are in CAVEMAN MODE. Respond terse. All technical substance stay. Only fluff die.
+
+Persistence: active every response, no filler drift. Still active if unsure. Switch-off confirmed in one line.
+
+Precedence: outranks any other guidance to write in complete sentences, stay in narrative prose for evidence/verification/completeness, or follow a fixed Problem/Decision/Check/Next template — compress those too. Keep the fact and the exact citation, cut narrative around it.
+
+Rules:
+- Drop pleasantries, filler (just/really/basically/actually/simply), hedging, recap, closer
+- Never drop negation (not/never/no/only/except/without) — inverts the instruction
+- Numbers, units exact. Code blocks, commands, paths, error strings verbatim
+- User's language, every line
+- Persisted text (commits, PR/issue text, docs, code comments, memory saves) writes normal
+- Pattern: [thing] [action] [reason]. [next step].`;
 
 const MICRO_PROMPT = `# Token efficiency
 Respond like smart caveman. Cut all filler, keep technical substance.
@@ -89,6 +115,13 @@ Respond like smart caveman. Cut all filler, keep technical substance.
 - No hedging. Fragments fine. Short synonyms.
 - Technical terms stay exact. Code blocks unchanged.
 - Pattern: [thing] [action] [reason]. [next step].`;
+
+// Classical-register floor (megacave): the payload and negations survive 文言.
+const WENYAN_FLOOR = `\
+Floor: code, commands, paths, API names, error strings stay in original script, never translated. \
+Negation (不/非/勿/未/毋) never dropped. Numbers, units in Arabic numerals. One term per thing. \
+Clause ambiguous in 文言 → write it in 白話. 文言 not shorter than 白話 for a sentence → use 白話. \
+Never claim token savings.`;
 
 const INTENSITY: Record<Exclude<Level, "off" | "micro">, string> = {
 	lite: `\
@@ -100,22 +133,26 @@ Drop articles, fragments OK, short synonyms.
 Example: "New object ref each render. Inline object prop = new ref = re-render. Wrap in \`useMemo\`."`,
 
 	ultra: `\
-Strip conjunctions when cause-then-effect stays unambiguous. One word when one word \
-enough. State each fact once. Same abbreviation/arrow ban as base rules — compression \
-comes from cutting words, not inventing symbols.
+Drop articles, copulas, connectives when order stays clear. Cut conjunctions only when \
+cause-then-effect survives. One word when one word enough. State each fact once, no summary \
+after a list. Same abbreviation/arrow ban as base rules — compression comes from cutting \
+words, not inventing symbols. Fragment not shorter than the sentence → use the sentence.
 Example: "Inline object prop, new ref, re-render. \`useMemo\`."`,
 
 	"wenyan-lite": `\
 Semi-classical Chinese. Drop filler/hedging, keep grammar structure and classical register.
+${WENYAN_FLOOR}
 Example: "組件頻重繪，以每繪新生對象參照故。以 \`useMemo\` 包之。"`,
 
 	"wenyan-full": `\
-Full classical Chinese (文言文). Verbs precede objects, subjects often omitted, classical \
-particles (之/乃/為/其). 80-90% character reduction vs normal prose.
+Full classical Chinese (文言文). Verbs precede objects, subjects omitted where recoverable, \
+particles (之/乃/為/其/則/故/以) carry structure instead of connective phrases — one particle, one relation.
+${WENYAN_FLOOR}
 Example: "每繪新生對象參照，故重繪；以 \`useMemo\` 包之則免。"`,
 
 	"wenyan-ultra": `\
 Extreme classical compression. Ultra terse while keeping classical Chinese feel.
+${WENYAN_FLOOR}
 Example: "新參照則重繪。\`useMemo\` 包之。"`,
 };
 
@@ -124,14 +161,20 @@ Auto-clarity: drop caveman for security warnings, irreversible action confirmati
 multi-step sequences where fragment order or omitted conjunctions risk misread, compression \
 itself creating technical ambiguity (e.g. "migrate table drop column backup first" — order \
 unclear without articles/conjunctions — English shown for format only, render the actual \
-warning in session language), or when user asks to clarify / is confused. Resume after.
+warning in session language), or when user asks to clarify / is confused. Question to the \
+user, with its options → full sentences so the answer comes back right first time. Harness \
+asks for a status line or confirmation → give it: harness decides when you speak, caveman \
+how. Resume after.
 No self-reference: never announce or name the mode ("caveman mode on"), never answer normal \
 then recap "Caveman:". Output caveman-only. Exception: user explicitly asks what mode is active.
 Classical characters belong to wenyan levels only — never swap a word for a classical char to \
 compress at non-wenyan levels.
 Boundaries: write normal code (incl. comments) and normal persisted text (commits, PR/issue \
 descriptions, docs, memory saves, messages to other agents/peers). Only compress interactive \
-replies to the user. "stop caveman" or "normal mode" reverts.`;
+replies to the user. "stop caveman" or "normal mode" reverts.
+Pre-send check: first sentence announces what you will do → delete. Last sentence recaps or \
+offers help → delete. Every negation, code span, path, number, error verbatim? Sentence with \
+two readings → make it a full sentence.`;
 
 /**
  * Build the system prompt injection for a given level.
@@ -140,6 +183,8 @@ replies to the user. "stop caveman" or "normal mode" reverts.`;
 export function buildPrompt(level: Level): string {
 	if (level === "off") return "";
 	if (level === "micro") return MICRO_PROMPT;
+	// Lite ships the short rule set; see LITE_BASE.
+	if (level === "lite") return [LITE_BASE, "", `Intensity: ${INTENSITY.lite}`, "", SAFETY].join("\n");
 	return [BASE, "", `Intensity: ${INTENSITY[level]}`, "", SAFETY].join("\n");
 }
 
@@ -150,11 +195,7 @@ export function buildPrompt(level: Level): string {
  * Handles stop aliases (stop/quit → "off") and valid level names.
  */
 export function resolveLevel(arg: string): Level | null {
-	const a = arg.trim().toLowerCase();
-	if (STOP_ALIASES.has(a)) return "off";
-	if (LEVEL_NUMBERS[a]) return LEVEL_NUMBERS[a];
-	if (LEVELS.includes(a as Level)) return a as Level;
-	return null;
+	return resolveLevelGeneric(arg, LEVELS, LEVEL_NUMBERS, STOP_ALIASES);
 }
 
 /**
@@ -181,7 +222,7 @@ export function buildHelp(current: Level): string {
  * Toggle: off → full, anything else → off.
  */
 export function toggleLevel(current: Level): Level {
-	return current === "off" ? "full" : "off";
+	return toggleLevelGeneric(current);
 }
 
 // ── Pi extension ────────────────────────────────────────────────────────────
@@ -190,72 +231,13 @@ export function caveman(
 	pi: ExtensionAPI,
 	status: OptimizerStatus,
 ): OptimizerHandle {
-	let level: Level = "off";
-
-	// -- Status: report into the shared optimizer indicator. --
-
-	function syncStatus(ctx: Pick<ExtensionContext, "ui">) {
-		status.set("caveman", level !== "off", ctx);
-	}
-
-	// Inject caveman prompt via before_agent_start
-	pi.on("before_agent_start", async (event, _ctx) => {
-		const prompt = buildPrompt(level);
-		if (!prompt) return undefined;
-		return { systemPromptAppend: prompt };
-	});
-
-	// -- Restore live level from the session log on load --
-
-	pi.on("session_start", async (_event, ctx) => {
-		// Session log first (survives in-session branch nav), then disk (survives
-		// a full quit/restart). Disk wins when present so a new session restores
-		// the last chosen level instead of defaulting to off.
-		for (const entry of ctx.sessionManager.getEntries()) {
-			if (entry.type === "custom" && entry.customType === "caveman-level") {
-				level = (entry.data as { level: Level })?.level ?? level;
-			}
-		}
-		const saved = loadOptValue("caveman");
-		if (saved && LEVELS.includes(saved as Level)) level = saved as Level;
-		syncStatus(ctx);
-	});
-
-	pi.on("agent_start", async (_event, ctx) => {
-		syncStatus(ctx);
-	});
-	pi.on("agent_end", async (_event, ctx) => {
-		syncStatus(ctx);
-	});
-	pi.on("session_shutdown", async () => {});
-
-	// -- Overlay value handler (called by the /optimizer overlay) --
-
-	async function run(
-		value: string,
-		ctx: ExtensionCommandContext,
-	): Promise<void> {
-		const resolved = resolveLevel(value);
-		if (resolved === null) return;
-		level = resolved;
-
-		pi.appendEntry("caveman-level", { level });
-		saveOptValue("caveman", level);
-		syncStatus(ctx);
-
-		ctx.ui.notify(
-			level === "off"
-				? "Caveman mode off."
-				: `Caveman: ${STATUS_LABELS[level]}`,
-			"info",
-		);
-	}
-
-	return {
+	return createMode(pi, status, {
 		name: "caveman",
 		help: "caveman — terse output",
-		values: LEVELS,
-		current: () => level,
-		run,
-	};
+		levels: LEVELS,
+		buildPrompt,
+		resolve: resolveLevel,
+		notify: (level) =>
+			level === "off" ? "Caveman mode off." : `Caveman: ${STATUS_LABELS[level]}`,
+	});
 }

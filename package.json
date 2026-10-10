@@ -1,7 +1,7 @@
 {
 	"name": "@local/omp-optimizer",
-	"version": "2.1.0-omp.1",
-	"description": "Integral omp suite (fork of @xynogen/pix-optimizer, ported off pi.dev upstream): token optimization (caveman + RTK + ponytail) + 39 bundled workflow skills (incl. jq/TOON) with live `!`cmd`` interpolation + Engram memory auto-recall + background session titles",
+	"version": "2.1.0-omp.3",
+	"description": "Integral omp suite (fork of @xynogen/pix-optimizer, ported off pi.dev upstream): token optimization (caveman + RTK + ponytail) + 41 bundled workflow skills (incl. jq/TOON) with live `!`cmd`` interpolation + Engram memory auto-recall + background session titles",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -10,7 +10,7 @@
 	"files": [
 		"src",
 		"skills",
-		"README.md",
+		"README.org",
 		"LICENSE"
 	],
 	"omp": {

@@ -20,7 +20,7 @@ All five persist to `~/.omp/agent/optimizer.json` and toggle through the same
 `/optimizer` command. Since v2.0.0 this package also absorbs a third
 formerly standalone plugin:
 
-- **omp-skills** — 39 workflow skills under `skills/` (auto-discovered by omp's
+- **omp-skills** — 41 workflow skills under `skills/` (auto-discovered by omp's
   skill provider) + live `` !`cmd` `` directive interpolation on `skill://` reads
 
 ## Command
@@ -103,17 +103,22 @@ cargo install rtk-ai
 
 ### Ponytail Mode (`Pt`)
 
-"Lazy senior dev" mode. Governs **what** the agent builds (minimal code,
-YAGNI), orthogonal to Caveman which governs **how** it talks — they pair. Before
-writing code the agent stops at the first rung that holds: does this need to
-exist → stdlib → native platform → installed dep → one line → minimum that
-works. Validation, error handling, security, and accessibility are never cut.
+"Lazy senior dev" mode. Governs **what** the agent builds (smallest complete
+change), orthogonal to Caveman which governs **how** it talks — they pair. Before
+writing code the agent maps every place the change must reach (callers, tests,
+fixtures, config) and what it could break, then takes the first option that
+fully works: skip it → reuse in-repo → stdlib/platform → installed dep → one
+line → minimum code. Every reply ends with what was skipped or not checked.
+Validation, error handling, security, and accessibility are never cut. Known
+shortcuts are marked `shortcut: <limit>, <when to upgrade>`. Bundled
+`ponytail-review` / `ponytail-audit` skills give a numbered, plain-English
+quality review of a change / whole repo.
 
-| Level | Description                          |
-|-------|--------------------------------------|
-| lite  | Name the lazier alternative, you pick |
-| full  | The ladder enforced (default)        |
-| ultra | YAGNI extremist                      |
+| Level | Description                                   |
+|-------|-----------------------------------------------|
+| lite  | Build as asked, name the smaller option       |
+| full  | The rules enforced (default)                  |
+| ultra | YAGNI extremist, also questions the request   |
 
 **No install required** — pure prompt injection, no external binary or PATH
 dependency (unlike RTK and TOON).
@@ -143,8 +148,8 @@ skill registration needed.
 |-------------------|-----------------------------------------------------------|
 | `src/index.ts`    | Wires all five tools + shared status, registers `/optimizer` |
 | `src/opt.ts`      | The `/optimizer` command (native select dialogs + text args) |
-| `src/status.ts`   | Shared status-bar cell (static ASCII `toolIcon()`)       |
 | `src/caveman.ts`  | Caveman logic, levels, prompt                            |
+| `src/mode.ts`     | Shared level-resolution + `createMode()` factory (caveman/ponytail) |
 | `src/rtk.ts`      | RTK prompt + bash command rewriting + sudo intercept     |
 | `src/ponytail.ts` | Ponytail logic, levels, prompt                           |
 | `src/engram.js`   | Engram memory recall + on/off toggle handle              |
@@ -158,7 +163,7 @@ that `/optimizer` dispatches to. All five share one `OptimizerStatus`.
 
 ## Differences from upstream `pix-optimizer`
 
-Sync state: feature-parity with upstream **1.1.29** (forked at 1.1.14).
+Sync state: feature-parity with upstream **1.2.0** (forked at 1.1.14).
 Upstream 1.1.15–1.1.18 reviewed 2026-07-24 (see prior note, unchanged).
 1.1.19–1.1.24 reviewed 2026-08-11: the only functional delta is 1.1.22's
 `refactor(pix-optimizer): move toon guidance to skills` — upstream deleted
@@ -199,6 +204,54 @@ commits) is `pix-pretty` theme-token surface this port never carried
 (status icons are static ASCII, the `/optimizer` overlay is native
 `ctx.ui.select`, neither calls `theme.fg()`) or unrelated new-package
 planning — no equivalent surface here.
+
+1.2.0 reviewed 2026-09-26 (package.json version bump from the 1.1.29 line
+above; no CHANGELOG.md in the upstream repo, diffed by file). Four real
+deltas:
+
+- **`mode.ts` (new file)** — upstream extracted the level-resolution +
+  session-restore + status-sync boilerplate shared by `caveman.ts`/
+  `ponytail.ts` into a generic `createMode<L>()` factory + generic
+  `resolveLevel`/`toggleLevel`. Ported here verbatim as a DRY refactor, with
+  one adaptation: upstream's `before_agent_start` hook treats
+  `event.systemPrompt` as a plain string and concatenates
+  (`` `${prompt}\n\n${existing}` ``) — that's the `@earendil-works/
+  pi-coding-agent` SDK's contract. This port's hook still returns
+  `{ systemPromptAppend: prompt }`, matching every other hook in this
+  package (see the `ExtensionAPI` divergence note below) — no behavior
+  change, `caveman.test.ts`/`ponytail.test.ts` unchanged and green.
+- **`persist.ts` hardening** — upstream's `readFile()` now iterates an
+  explicit tool whitelist instead of trusting whatever keys are in the
+  parsed JSON, rejecting a corrupt/hand-edited `optimizer.json` (stray keys,
+  non-string values) instead of propagating garbage into tool state. Ported
+  here as `OPTIMIZER_TOOLS` (all five local tools, vs upstream's three).
+  Upstream also dropped the `try/catch` around `saveOptValue`'s write in
+  favor of a `showTransientError` UI call from `pix-pretty` at each
+  call-site — NOT ported: this port's `saveOptValue` already swallows and
+  `console.warn`s its own write failures (pre-dates this sync), so callers
+  never needed their own try/catch; adding `pix-pretty`'s external dep for
+  a UI toast this port doesn't have would be a regression, not a fix.
+- **`opt.ts` full rewrite to a `ui.custom` keyboard-nav overlay**
+  (arrow-key cycling, `ModalPager`, Kitty-protocol key matching) — NOT
+  portable, confirmed dead end: this is the exact overlay mechanism v1 of
+  this port already tried and abandoned (see Command section above —
+  `ui.custom` renders under omp but never receives keystrokes). No change.
+- **`caveman.ts` full redesign to ASD-STE100 Simplified Technical English**
+  (keeps articles, active voice, numbered reply-shape rules) — reviewed and
+  deliberately NOT ported. Two independent reasons: (1) wrong lineage — this
+  port's `caveman.ts` has tracked `JuliusBrussee/caveman`'s SKILL.md since
+  the fork point, not `pix-optimizer`'s own evolving caveman text (see the
+  lineage note below); (2) upstream's redesign explicitly *keeps* articles
+  ("unlike the old article-dropping caveman prompt" — their words), which
+  is the opposite of this harness's own global `RULES.md` caveman mandate
+  ("Sin artículos (el/la/un/una)") — porting it would silently break every
+  other project on this machine that relies on that mandate. `status.ts`'s
+  parallel move to the external `@xynogen/pix-pretty` icon catalog + a
+  global `/pix` icon-mode command is the same already-declined external-dep
+  tradeoff documented below, unchanged.
+
+Two of those four (`mode.ts`, `persist.ts`) landed in this sync; the other
+two are confirmed non-applicable, not oversights.
 
 Caveman prompt text (`src/caveman.ts` `BASE`/`SAFETY`) separately tracks
 [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) (the
@@ -243,6 +296,19 @@ drift since the 2026-08-20 sync above — every current paragraph already
 has a ported equivalent in `BASE`/`SAFETY` (the only unported bits remain
 the previously-reviewed-and-skipped `/caveman-compress`-exempt clause and
 "open a defect = open issue" wording, neither mapping to anything here).
+Re-diffed again 2026-09-26 against `~/.agents/skills/caveman/SKILL.md`
+(installed fresh that day via `npx skills add JuliusBrussee/caveman -g`,
+pinned to `main` HEAD — byte-identical to the GitHub `main` fetch used for
+this review): one new paragraph, a "Clarity register" hybrid rule — mixes
+ASD-STE100 clarity principles (one idea per sentence, ≤20-word target,
+active voice, present tense, one-term-per-concept, imperative mood, 3-word
+noun-cluster cap, single-referent pronouns) *into* caveman's existing
+article-dropping/terse identity rather than replacing it, with an explicit
+"conflict → clarity wins" tiebreaker. Unlike `pix-optimizer`'s ASD-STE100
+rewrite above, this is additive, not a replacement — still drops articles,
+still compatible with the global `RULES.md` mandate. Ported verbatim into
+`BASE`, positioned (matching upstream) right after the anti-mangling rule
+and before the tool-call-silence rule.
 
 Ponytail prompt text (`src/ponytail.ts` `BASE`/`SAFETY`) separately tracks
 [`DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail)'s
@@ -269,6 +335,42 @@ upgrade path" with no example); and the self-check rule now closes with
 "YAGNI applies to tests too", making explicit that the trivial-one-liners-
 need-no-test exemption is the same laziness principle as the rest of the
 skill, not a separate carve-out.
+
+Synced 2026-10-08 against caveman v3.2.0 / ponytail v5.1.0 / pix-optimizer
+1.3.2 (live files at `main` HEAD, not changelogs):
+
+- **caveman** (`skills/caveman/SKILL.md`; 3.2.0 "refine voice rules"): ported
+  switch-off-in-one-line, diff-first answers (changed lines + 1-2 context
+  lines), existing-comments-are-payload, question-to-user → full sentences,
+  harness status line → give it, a pre-send check, and the `ultracave`
+  skill's copula/connective drop + no-summary-after-list into `ultra`. The
+  `megacave` skill's floor (payload in original script, 不/非/勿/未/毋 kept,
+  Arabic numerals, ambiguous clause → 白話, never claim savings) is appended
+  to all `wenyan-*` levels; the old "80-90% character reduction" claim is
+  gone. Deliberately NOT ported: upstream's relaxed "bounded status" tool-call
+  rule (this port keeps full tool-call silence) and the hook-reported
+  `/caveman status` wording (this port tracks level itself). Everything else in
+  3.2.0 is proxy/engine/installer/browser-extension infrastructure — no
+  equivalent surface.
+- **pix-optimizer 1.3.2** lineage: `63b2ded` "lite ships the short rule set"
+  ported as `LITE_BASE` (also fixes lite's old contradiction: BASE said "drop
+  articles", lite intensity said "keep articles"); `Precedence:` kept in it.
+  Not ported: `09c2e9e` (pix's caveman reduced to a length-only preference
+  because its separate SOP package owns style — no such package here),
+  `79d4cfc` rtk auto-install via `@xynogen/pix-runtime` binary catalog
+  (external dep, same ceiling as `pix-pretty`), the async `saveOptValue`
+  refactor (this port's `persist.ts` is sync/local), and Windows
+  path/home/theme refactors.
+- **ponytail v5.0.0/v5.1.0**: `BASE`/`SAFETY` rewritten to the new ruleset
+  (scope-mapping before writing, "lazy about the solution, never the change",
+  move/merge keeps validation, one-line why-only comments, closing
+  skipped/unchecked lines, test trigger list, ultra questions the request) and
+  the `ponytail:` marker became `shortcut:` (old marker still recognized).
+  Dropped as superseded: the fixed `[code] → skipped` pattern line and the
+  "complex request? ship lazy version" rule. `ponytail-review` and
+  `ponytail-audit` skills copied verbatim from upstream. Not ported: the
+  session-start codebase map (hook infrastructure), `ponytail-debt`/`-gain`/
+  `-help` (CLI/hook-state dependent).
 - **engram (gentle-engram pi-v0.2.0 → pi-v0.4.1)**: `src/engram.js` retains
   the compaction summary with `project_owned` + `resume:true` session
   registration (effective `<id>:resume:N` cached per runtime id), recalls with

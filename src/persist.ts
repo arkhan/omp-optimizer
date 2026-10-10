@@ -33,6 +33,18 @@ function getAgentDir(): string {
 
 type OptimizerFileConfig = Partial<Record<OptimizerTool, string>>;
 
+// Explicit whitelist — matches OptimizerTool exactly. Iterating known keys
+// instead of trusting `raw`'s own keys rejects a corrupt/hand-edited
+// optimizer.json (stray keys, non-string values) instead of propagating
+// garbage into tool state. Ported from @xynogen/pix-optimizer v1.2.0.
+const OPTIMIZER_TOOLS: readonly OptimizerTool[] = [
+	"caveman",
+	"rtk",
+	"ponytail",
+	"engram",
+	"title",
+];
+
 function getStatePath(): string {
 	return join(getAgentDir(), "optimizer.json");
 }
@@ -41,8 +53,15 @@ function readFile(): OptimizerFileConfig {
 	try {
 		const sp = getStatePath();
 		if (!existsSync(sp)) return {};
-		const raw = JSON.parse(readFileSync(sp, "utf-8")) as OptimizerFileConfig;
-		return raw && typeof raw === "object" ? raw : {};
+		const raw = JSON.parse(readFileSync(sp, "utf-8")) as unknown;
+		if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+		const config: OptimizerFileConfig = {};
+		for (const tool of OPTIMIZER_TOOLS) {
+			const value = (raw as Record<string, unknown>)[tool];
+			if (typeof value === "string") config[tool] = value;
+		}
+		return config;
 	} catch {
 		return {};
 	}

@@ -212,8 +212,16 @@ describe("buildPrompt", () => {
 		const lite = buildPrompt("lite");
 		const ultra = buildPrompt("ultra");
 		expect(lite).toContain("Keep articles");
-		expect(ultra).toContain("Strip conjunctions");
-		expect(lite).not.toContain("Strip conjunctions");
+		expect(ultra).toContain("Cut conjunctions only");
+		expect(lite).not.toContain("Cut conjunctions only");
+	});
+
+	it("lite ships the short rule set and never tells the model to drop articles", () => {
+		const lite = buildPrompt("lite");
+		expect(lite).toContain("CAVEMAN MODE");
+		expect(lite).toContain("Precedence:");
+		expect(lite).not.toContain("Drop articles");
+		expect(lite.length).toBeLessThan(buildPrompt("full").length * 0.7);
 	});
 
 	it("includes wenyan levels with distinct classical-chinese instructions", () => {
@@ -225,6 +233,15 @@ describe("buildPrompt", () => {
 		expect(wenyanFull).toContain("文言文");
 		expect(wenyanUltra).toContain("Extreme classical compression");
 		expect(wenyanLite).not.toContain("文言文");
+	});
+
+	it("wenyan levels keep payload and negation, never claim savings", () => {
+		for (const l of ["wenyan-lite", "wenyan-full", "wenyan-ultra"] as Level[]) {
+			const p = buildPrompt(l);
+			expect(p).toContain("不/非/勿/未/毋");
+			expect(p).toContain("Never claim token savings");
+			expect(p).not.toContain("80-90%");
+		}
 	});
 
 	it("preserves user language and persists across turns", () => {
