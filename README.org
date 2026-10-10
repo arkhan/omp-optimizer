@@ -66,7 +66,15 @@ cargo install rtk-ai
 *No install required* --- pure prompt injection, no external binary or PATH dependency (unlike RTK and TOON).
 
 ** Installation
-This package targets local/project use --- it is not published to npm. Point omp at it with an explicit extension path or the =extensions:= setting:
+Not published to npm. Install straight from git (no manual download; =omp plugin install= accepts git sources, see https://omp.sh/docs/plugins):
+
+#+begin_src sh
+omp plugin install 'github:arkhan/omp-optimizer'
+# pinned to a tag/commit:
+omp plugin install 'github:arkhan/omp-optimizer#<ref>'
+#+end_src
+
+Start a new omp session afterwards. Alternatively, with a local checkout, point omp at it with an explicit extension path or the =extensions:= setting:
 
 #+begin_src sh
 omp --extension /path/to/omp-optimizer/src/index.ts
