@@ -10,7 +10,9 @@ status-bar cell:
 - **RTK** (`Rk`) — prefixes shell commands with `rtk` + injects RTK prompt
 - **Ponytail** (`Pt`) — lazy-senior-dev system prompt (minimal code, YAGNI)
 - **Engram** (`En`) — automatic memory recall on `session_start` and retain on
-  compaction, via the local Engram HTTP server (`:7437`); on/off toggle
+  compaction, via the local Engram HTTP server (`:7437`, requires Engram ≥ 3.0.0:
+  compact context, `project_owned` + `resume` session registration; replay-safe
+  retain via `operation_id` + `GET /observations/save-result` on Engram ≥ 3.3.0); on/off toggle
 - **Title** (`Tt`) — background session titles from the first user prompts;
   on/off toggle
 
@@ -267,6 +269,15 @@ upgrade path" with no example); and the self-check rule now closes with
 "YAGNI applies to tests too", making explicit that the trivial-one-liners-
 need-no-test exemption is the same laziness principle as the rest of the
 skill, not a separate carve-out.
+- **engram (gentle-engram pi-v0.2.0 → pi-v0.4.1)**: `src/engram.js` retains
+  the compaction summary with `project_owned` + `resume:true` session
+  registration (effective `<id>:resume:N` cached per runtime id), recalls with
+  `/context?compact=true`, and since pi-v0.4.0 saves via `saveObservation()`:
+  frozen `operation_id`, `GET /observations/save-result` on ambiguous acks, one
+  replay only after the typed 404 `observation_save_result_not_found`.
+  pi-v0.4.1 (session summaries only on explicit closure) is a `mem_*` prompt
+  change and does not apply. Not ported: `mem_*` tools, `pi-engram init`,
+  installer pins, self-heal server launcher (MCP/pi-engram own those).
 
 Ported to omp's `ExtensionAPI` (`@oh-my-pi/pi-coding-agent`), which differs
 from upstream `pi-coding-agent` in ways that required real code changes, not

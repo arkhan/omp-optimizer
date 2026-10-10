@@ -96,12 +96,99 @@ async function postJSON(url, body, timeoutMs = 2000) {
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    return res.ok;
+    return res.ok ? await res.json() : null;
   } catch {
-    return false; // best-effort: retención al compactar nunca debe romper la sesión
+    return null; // best-effort: retención al compactar nunca debe romper la sesión
   } finally {
     clearTimeout(t);
   }
+}
+
+// Guardado replay-safe (pi-engram 0.4.0, Engram >= 3.3.0): un operation_id
+// congela el payload; si el ack del POST es ambiguo (timeout, red, recibo
+// inválido) se consulta GET /observations/save-result. Solo el 404 tipado
+// `observation_save_result_not_found` autoriza UN replay idéntico tras 250ms;
+// 409/410 del replay solo justifican un lookup final. Resultado desconocido
+// => null (best-effort, sin reintentos ciegos con otro operation_id).
+const SAVE_RECOVERY_MS = 7500;
+const SAVE_LOOKUP_MS = 1000;
+const SAVE_BACKOFF_MS = 250;
+
+const hasId = (d, status) =>
+  Number.isSafeInteger(d?.id) && d.id > 0 &&
+  (status === "saved" ? d.status === undefined || d.status === "saved" : d.status === "committed");
+
+async function saveObservation(body) {
+  const opId = crypto.randomUUID();
+  const serialized = JSON.stringify({ ...body, operation_id: opId });
+  const lookupUrl = `${ENGRAM_HTTP}/observations/save-result?operation_id=${encodeURIComponent(opId)}`;
+  const deadline = Date.now() + SAVE_RECOVERY_MS;
+
+  const attempt = async (method) => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return {};
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), Math.min(remaining, method === "GET" ? SAVE_LOOKUP_MS : 2000));
+    try {
+      const res = await fetch(method === "POST" ? `${ENGRAM_HTTP}/observations` : lookupUrl, {
+        method,
+        headers: method === "POST" ? { "Content-Type": "application/json" } : undefined,
+        body: method === "POST" ? serialized : undefined,
+        signal: ctrl.signal,
+      });
+      let data = null;
+      try { data = await res.json(); } catch { /* cuerpo ilegible: ambiguo */ }
+      return { res, data };
+    } catch {
+      return {};
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const initial = await attempt("POST");
+  if (initial.res?.ok && hasId(initial.data, "saved")) return initial.data;
+  if (initial.res && !initial.res.ok) return null; // rechazo definitivo
+
+  const found = await attempt("GET");
+  if (found.res?.ok && hasId(found.data, "committed")) return found.data;
+  const miss = found.res?.status === 404 &&
+    found.data?.code === "observation_save_result_not_found" &&
+    found.data?.error === "no committed result found for operation_id";
+  if (!miss) return null;
+
+  await new Promise((r) => setTimeout(r, SAVE_BACKOFF_MS));
+  const replay = await attempt("POST");
+  if (replay.res?.ok && hasId(replay.data, "saved")) return replay.data;
+  if (replay.res && !replay.res.ok && replay.res.status !== 409 && replay.res.status !== 410) return null;
+  const last = await attempt("GET");
+  return last.res?.ok && hasId(last.data, "committed") ? last.data : null;
+}
+
+// Registra la sesión como project_owned con resume:true (Engram >= 3.0.0,
+// pi-engram 0.2.0). Si la sesión ya terminó, el core responde con un id
+// efectivo `<id>:resume:N`; las observaciones deben usar ese id, no el
+// original (si no, el server rechaza con 409 session_already_ended).
+// Se cachea por id de runtime: sin cache, cada compactación abriría otra
+// continuación `:resume:N+1` mientras la anterior sigue abierta.
+const effectiveSessions = new Map();
+
+async function registerSession(runtimeId, project, directory) {
+  const key = `${project}:${runtimeId}`;
+  const cached = effectiveSessions.get(key);
+  if (cached) return cached;
+  const ack = await postJSON(`${ENGRAM_HTTP}/sessions`, {
+    id: runtimeId,
+    project,
+    directory: directory || "",
+    ownership_mode: "project_owned",
+    resume: true,
+  });
+  const id = ack?.id;
+  if (ack?.status !== "created" || typeof id !== "string") return null;
+  if (id !== runtimeId && !id.startsWith(`${runtimeId}:resume:`)) return null;
+  effectiveSessions.set(key, id);
+  return id;
 }
 
 async function resolveProject(cwd) {
@@ -110,7 +197,9 @@ async function resolveProject(cwd) {
 }
 
 async function injectMemoryContext(pi, ctx, project, status) {
-  const ctxRes = await fetchJSON(`${ENGRAM_HTTP}/context?project=${encodeURIComponent(project)}`);
+  // compact=true (Engram >= 3.0.0): el core devuelve observaciones solo con
+  // título, ~60% menos bytes; mantiene el marcador "### Recent Observations".
+  const ctxRes = await fetchJSON(`${ENGRAM_HTTP}/context?project=${encodeURIComponent(project)}&compact=true`);
   const raw = ctxRes?.context?.trim();
   const { text, count } = raw ? summarizeContext(raw) : { text: "", count: 0 };
 
@@ -156,10 +245,10 @@ export default function (pi, status) {
     const project = await resolveProject(ctx.cwd);
     const summary = event?.compactionEntry?.summary?.trim();
     const sessionId = ctx.sessionManager?.getSessionId();
-    if (summary && sessionId) {
-      await postJSON(`${ENGRAM_HTTP}/sessions`, { id: sessionId, project, directory: ctx.cwd || "" });
-      await postJSON(`${ENGRAM_HTTP}/observations`, {
-        session_id: sessionId,
+    const effectiveId = summary && sessionId ? await registerSession(sessionId, project, ctx.cwd) : null;
+    if (summary && effectiveId) {
+      await saveObservation({
+        session_id: effectiveId,
         type: "session_summary",
         title: "Compaction recovery summary",
         content: redactPrivateTags(summary),
