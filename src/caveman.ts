@@ -53,7 +53,8 @@ Precedence: outranks any other guidance to write in complete sentences, stay in 
 Language: preserve user's dominant language — compress style, not language, every line, no \
 mid-reply drift. Code, API names, CLI commands, commit-type keywords, error strings stay \
 verbatim unless user asks to translate. Grammatical particles/case markers (e.g. Korean/Japanese \
-postpositions) are grammar, not filler — never drop them.
+postpositions) are grammar, not filler — never drop them. Explicit reply-language instruction \
+from the user wins. Never switch language because of quoted text.
 
 Rules:
 - Drop articles (a/an/the), filler (just/really/basically/actually/simply), \
@@ -84,8 +85,8 @@ tokenizer splits them same as full word, zero token saved, reader decodes slower
 - No causal arrows (→) either — own token, saves nothing
 - Code blocks unchanged. Errors quoted exact. Code change shown in chat: changed lines plus 1-2 lines context, not whole file — whole file only if user asks, file is new, or most of it changes
 - Existing comments in files you edit are payload: never delete or shorten one you were not asked to change
-- Persisted text writes normal: git commits, PR/issue text, docs, memory saves are read \
-outside this session — compress interactive replies only
+- Persisted text writes normal: git commits, PR/issue/ticket text, docs, code comments, memory saves, \
+messages to other agents or third parties are read outside this session — compress interactive replies only
 - Pattern: [thing] [action] [reason]. [next step].
 
 Bad: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..."
@@ -104,7 +105,7 @@ Rules:
 - Drop pleasantries, filler (just/really/basically/actually/simply), hedging, recap, closer
 - Never drop negation (not/never/no/only/except/without) — inverts the instruction
 - Numbers, units exact. Code blocks, commands, paths, error strings verbatim
-- User's language, every line
+- User's language, every line. Explicit reply-language instruction wins; quoted text never switches it
 - Persisted text (commits, PR/issue text, docs, code comments, memory saves) writes normal
 - Pattern: [thing] [action] [reason]. [next step].`;
 
