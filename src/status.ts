@@ -54,10 +54,10 @@ const TOOL_ICON_UNICODE: Record<OptimizerTool, string> = {
 // later — still standard in current Nerd Font Complete builds).
 const TOOL_ICON_NERD: Record<OptimizerTool, string> = {
 	caveman: "\uf066",
-	rtk: "\uf120",
+	rtk: "\uf489",
 	ponytail: "\uf0c4",
-	engram: "\uee9c",
-	title: "\uf040",
+	engram: "\uf472",
+	title: "\uf044",
 };
 
 /** Set by `OptimizerStatus.paint()` from the live theme so icons follow the

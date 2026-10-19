@@ -28,7 +28,7 @@ State persists to =~/.omp/agent/optimizer.json=, keyed by tool name. Each tool r
 ** Status bar
 A single cell always shows all five tool icons in a fixed left-to-right order, color-coded by state: *accent* when the tool is enabled, *dim* when disabled. The cell is never empty. Engram's icon is accent only when BOTH enabled and memory was actually loaded this session (dim if disabled or the Engram server is unreachable).
 
-Icons are static ASCII glyphs (=Cv=, =Rk=, =Pt=, =En=, =Tt=) --- the upstream =pix-pretty= nerd-font/unicode icon catalog was dropped in this port (it was an external dependency not available to omp extensions). No configuration knob; if a themed icon set matters, extend =TOOL_ICON_ASCII= in =src/status.ts=.
+Icons come from three presets in =src/status.ts= (=TOOL_ICON_ASCII= =Cv/Rk/Pt/En/Tt=, =TOOL_ICON_UNICODE= emoji, =TOOL_ICON_NERD=), selected by the active omp symbol preset. The Nerd set is chosen for /equal visual weight/ (glyph ink area 0.33--0.48 of the cell, measured on Symbols Nerd Font Mono): caveman =\uf066=, rtk =\uf489= (=oct-terminal=; =fa-terminal= =\uf120= was too thin, 0.18), ponytail =\uf0c4=, engram =\uf472= (=oct-database=; =fa-brain= =\uee9c= was too heavy, 0.68), title =\uf044= (=\uf040= pencil too thin; Material Design =\u{f090c}= renders smaller in the terminal --- stay in the Font Awesome/Octicons ranges). Re-measure with fontTools =AreaPen= before swapping a glyph.
 
 ** Features
 *** Caveman Mode (=Cv=)
