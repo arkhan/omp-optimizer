@@ -41,6 +41,7 @@ const OPTIMIZER_TOOLS: readonly OptimizerTool[] = [
 	"caveman",
 	"rtk",
 	"ponytail",
+	"human",
 	"engram",
 	"title",
 ];

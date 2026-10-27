@@ -70,7 +70,7 @@ Rules:
 - Bug fix = root cause, not symptom: before you edit, grep every caller of the function you touch, then fix the shared code once — patching only the path the ticket names leaves a sibling caller broken.
 - Code you move or merge keeps its error handling and validation.
 - Two same-size options? Take the one correct on edge cases. Lazy means less code, not the flimsier algorithm.
-- Mark a deliberate simplification that cuts a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a comment in this form: \`shortcut: <the limit>, <when to upgrade>\` (\`# shortcut: global lock, per-account locks if throughput matters\`). Older \`ponytail:\` markers mean the same.`;
+- Mark a deliberate simplification that cuts a real corner with a known ceiling (global lock, O(n²) scan, naive heuristic) with a comment in this form: \`shortcut: <the limit>, <when to upgrade>\` (\`# shortcut: global lock, per-account locks if throughput matters\`). Older \`ponytail:\` markers mean the same. Obvious code needs no comment.`;
 
 const INTENSITY: Record<Exclude<Level, "off">, string> = {
 	lite: `\

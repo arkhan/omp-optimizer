@@ -1,14 +1,15 @@
 /**
  * omp-optimizer — integral token/workflow-optimization suite for omp.
  *
- * Five tools, combined into one extension + one command:
+ * Six tools, combined into one extension + one command:
  *   - caveman:  terse-output system prompt
  *   - rtk:      prefixes shell commands with `rtk` + injects RTK prompt
  *   - ponytail: lazy-senior-dev system prompt (minimal code, YAGNI)
+ *   - human:    natural-voice system prompt (no AI tells in text users read)
  *   - engram:   auto memory recall on session_start/compact (:7437)
  *   - title:    background session title from the first user prompts
  *
- * They share ONE status-bar cell (all five icons always shown — dimmed when
+ * They share ONE status-bar cell (all six icons always shown — dimmed when
  * off, accented when on; icon style is nerd/unicode/ascii, follows the omp
  * symbolPreset) and ONE command (/optimizer — native select dialogs, or a
  * text-arg form). index.ts wires lifecycle hooks via each module, then
@@ -21,6 +22,7 @@ import { caveman } from "./caveman.ts";
 import engram from "./engram.js";
 import { interpolateSkill } from "./interpolate.ts";
 import { registerOptCommand } from "./opt.ts";
+import { human } from "./human.ts";
 import { ponytail } from "./ponytail.ts";
 import { loadOptValue, saveOptValue } from "./persist.ts";
 import { rtk } from "./rtk.ts";
@@ -84,6 +86,7 @@ export default function optimizer(pi: ExtensionAPI) {
 		caveman: caveman(pi, status),
 		rtk: rtk(pi, status),
 		ponytail: ponytail(pi, status),
+		human: human(pi, status),
 		// omp-engram: auto memory recall on session_start / compaction (HTTP
 		// :7437). En/🧠 accent = enabled AND memory loaded this session.
 		engram: engram(pi, status),

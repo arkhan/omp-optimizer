@@ -13,6 +13,7 @@ const tag = (c: string, t: string) => `<${c}>${t}</${c}>`;
 const CV = toolIcon("caveman");
 const RK = toolIcon("rtk");
 const PT = toolIcon("ponytail");
+const HM = toolIcon("human");
 const EN = toolIcon("engram");
 const TT = toolIcon("title");
 
@@ -24,7 +25,7 @@ describe("renderStatus", () => {
 				tag,
 			),
 		).toBe(
-			`<accent>${CV}</accent>  <accent>${RK}</accent>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<accent>${CV}</accent>  <accent>${RK}</accent>  <accent>${PT}</accent>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
@@ -35,25 +36,25 @@ describe("renderStatus", () => {
 				tag,
 			),
 		).toBe(
-			`<dim>${CV}</dim>  <accent>${RK}</accent>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <accent>${RK}</accent>  <accent>${PT}</accent>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("all dim when nothing enabled (cell never empty)", () => {
 		expect(renderStatus({}, tag)).toBe(
-			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("preserves fixed order regardless of insertion order", () => {
 		expect(renderStatus({ ponytail: true, caveman: true }, tag)).toBe(
-			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
 	it("resolves icons via the shared catalog (non-empty glyphs)", () => {
 		// toolIcon delegates to pix-pretty's icon(); every tool has a glyph.
-		expect([CV, RK, PT, EN, TT].every((g) => g.length > 0)).toBe(true);
+		expect([CV, RK, PT, HM, EN, TT].every((g) => g.length > 0)).toBe(true);
 	});
 });
 
@@ -80,7 +81,7 @@ describe("OptimizerStatus", () => {
 		expect(last.key).toBe(STATUS_KEY);
 		// caveman + ponytail still unset (dim), rtk accent.
 		expect(last.text).toBe(
-			`<dim>${CV}</dim>  <accent>${RK}</accent>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <accent>${RK}</accent>  <dim>${PT}</dim>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
@@ -92,7 +93,7 @@ describe("OptimizerStatus", () => {
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
 		expect(last.text).toBe(
-			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<accent>${CV}</accent>  <dim>${RK}</dim>  <accent>${PT}</accent>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 
@@ -104,7 +105,7 @@ describe("OptimizerStatus", () => {
 		const last = ctx.calls.at(-1);
 		if (!last) throw new Error("no calls");
 		expect(last.text).toBe(
-			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
+			`<dim>${CV}</dim>  <dim>${RK}</dim>  <dim>${PT}</dim>  <dim>${HM}</dim>  <dim>${EN}</dim>  <dim>${TT}</dim> `,
 		);
 	});
 });

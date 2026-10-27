@@ -1,16 +1,16 @@
 /**
  * status.ts — shared status-bar indicator for the optimizer suite.
  *
- * caveman / rtk / ponytail / engram / title each toggle independently,
+ * caveman / rtk / ponytail / human / engram / title each toggle independently,
  * but they're all the same class of thing (token/workflow optimization
- * tools), so they share ONE status cell instead of five. Each tool reports its
- * on/off state into a single registry; the cell renders ALL five icons in a
+ * tools), so they share ONE status cell instead of six. Each tool reports its
+ * on/off state into a single registry; the cell renders ALL six icons in a
  * fixed order — accent-colored when the tool is enabled, dim when disabled.
  * The cell is never empty.
  *
- *   all on:        all five accent
+ *   all on:        all six accent
  *   caveman off:   caveman dim, rest accent
- *   all off:       all five dim
+ *   all off:       all six dim
  */
 
 import type {
@@ -24,6 +24,7 @@ const TOOL_ICON_ASCII: Record<OptimizerTool, string> = {
 	caveman: "Cv",
 	rtk: "Rk",
 	ponytail: "Pt",
+	human: "Hm",
 	engram: "En",
 	title: "Tt",
 };
@@ -41,6 +42,7 @@ const TOOL_ICON_UNICODE: Record<OptimizerTool, string> = {
 	caveman: "⛏️",
 	rtk: "🗡️",
 	ponytail: "✂️",
+	human: "🗣️",
 	engram: "🧠",
 	title: "✍️",
 };
@@ -56,6 +58,7 @@ const TOOL_ICON_NERD: Record<OptimizerTool, string> = {
 	caveman: "\uf066",
 	rtk: "\uf489",
 	ponytail: "\uf0c4",
+	human: "\uf007",
 	engram: "\uf472",
 	title: "\uf044",
 };
@@ -70,7 +73,7 @@ let activePreset: SymbolPreset = "unicode";
  * tool's internals.
  */
 export interface OptimizerHandle {
-	/** Tool name, e.g. "caveman" / "rtk" / "ponytail" / "engram" / "title". */
+	/** Tool name, e.g. "caveman" / "rtk" / "ponytail" / "human" / "engram" / "title". */
 	name: OptimizerTool;
 	/** One-line summary shown in the command's status/help output. */
 	help: string;
@@ -90,6 +93,7 @@ export type OptimizerTool =
 	| "caveman"
 	| "rtk"
 	| "ponytail"
+	| "human"
 	| "engram"
 	| "title";
 
@@ -108,6 +112,7 @@ const TOOL_ORDER: readonly OptimizerTool[] = [
 	"caveman",
 	"rtk",
 	"ponytail",
+	"human",
 	"engram",
 	"title",
 ];

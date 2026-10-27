@@ -19,6 +19,7 @@ function fakeHandles(): Record<OptimizerTool, OptimizerHandle> {
 		caveman: mk("caveman", "full", ["off", "lite", "full", "ultra", "micro"]),
 		rtk: mk("rtk", "on", ["off", "on"]),
 		ponytail: mk("ponytail", "off", ["off", "lite", "full", "ultra"]),
+		human: mk("human", "full", ["off", "full"]),
 		engram: mk("engram", "on", ["off", "on"]),
 		title: mk("title", "on", ["off", "on"]),
 	};

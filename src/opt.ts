@@ -10,7 +10,7 @@
  * form covers direct/scriptable use:
  *
  *   /optimizer                → pick a tool, then pick its value (native dialogs)
- *   /optimizer status         → plain-text summary of all five tools
+ *   /optimizer status         → plain-text summary of all six tools
  *   /optimizer <tool>         → current value + valid values for that tool
  *   /optimizer <tool> <value> → set directly (headless-safe)
  */
@@ -27,6 +27,7 @@ const TOOL_ORDER: readonly OptimizerTool[] = [
 	"caveman",
 	"rtk",
 	"ponytail",
+	"human",
 	"engram",
 	"title",
 ];
@@ -76,7 +77,7 @@ export function registerOptCommand(
 ): void {
 	pi.registerCommand("optimizer", {
 		description:
-			"omp-optimizer: caveman / rtk / ponytail — /optimizer [tool] [value]",
+			"omp-optimizer: caveman / rtk / ponytail / human — /optimizer [tool] [value]",
 		handler: async (args, ctx) => {
 			const [toolArg, value] = args.trim().split(/\s+/).filter(Boolean);
 
